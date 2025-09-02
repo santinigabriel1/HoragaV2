@@ -1,0 +1,54 @@
+services:
+  api:
+    image: node:18
+    container_name: api
+    working_dir: /usr/src/app
+    volumes:
+      - ./api:/usr/src/app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_PORT=3000
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=agendamento
+      - DB_DIALECT=mysql
+    depends_on:
+      - db
+    command: sh -c "npm install && npm run dev"
+
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=agendamento
+      - MYSQL_USER=cs_user
+      - MYSQL_PASSWORD=cs_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  front_end:
+    image: node:18
+    container_name: front
+    working_dir: /usr/src/app
+    volumes:
+      - ./front:/usr/src/app
+    tty: true
+    ports:
+      - "8081:3000"
+    command: sh -c "npm install && npm start"
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://api:3000
+    depends_on:
+      - api
+
+volumes:
+  db_data:
+    name: db_data
