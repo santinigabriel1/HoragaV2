@@ -14,10 +14,14 @@ import pool from "../database/data.js";
  * @returns {Promise<Object>} Retorna o usuário recém-cadastrado
  * @throws {Error} Caso o e-mail já exista ou ocorra erro no insert
  */
-export const cadastrar = async (usuario) => {   // Função para cadastrar um usuário no banco de dados (Create)
-    // Obtém uma conexão do pool
-    const cx = await pool.getConnection(); 
+export const cadastrar = async (usuario, cx = null) => {   // Função para cadastrar um usuário no banco de dados (Create)
+    let localCx = cx; // controle para saber se a conexão foi criada aqui ou recebida de fora
     try {
+
+        if (!localCx) {
+            // Obtém uma conexão do pool se não foi passada uma conexão
+            localCx = await pool.getConnection();
+        }
         // Desestrutura os dados recebidos do objeto usuário
         const { nome, email, senha, cargo } = usuario;
         // Query SQL para inserir um novo usuário
@@ -30,13 +34,13 @@ export const cadastrar = async (usuario) => {   // Função para cadastrar um us
         const values = [nome, email, hashSenha, cargo];
 
         // Verifica se já existe um usuário com o mesmo e-mail
-        const usuarioExistente = await buscarUsuarioPorEmail(email);
+        const usuarioExistente = await buscarUsuarioPorEmail(email, localCx);
         if (usuarioExistente) {
             throw new Error("Email já cadastrado");
         }
 
         // Executa a query de inserção com os valores
-        const [result] = await cx.execute(query, values);
+        const [result] = await localCx.execute(query, values);
 
         // Verifica se alguma linha foi afetada (se o insert funcionou)
         if (result.affectedRows === 0) {
@@ -46,15 +50,15 @@ export const cadastrar = async (usuario) => {   // Função para cadastrar um us
         // Pega o ID do último usuário inserido
         const lastIdUser = result.insertId;
         // Retorna o usuário cadastrado, buscando por ID
-        return buscarUsuarioPorId(lastIdUser);
+        return buscarUsuarioPorId(lastIdUser, localCx);
 
     } catch (error) {
         // Lança erro em caso de falha
         throw new Error("Erro ao cadastrar usuário: " + error.message);
     } finally{
         // Garante que a conexão será liberada de volta ao pool
-        if (cx) {
-            cx.release(); // Liberar a conexão de volta ao pool
+        if (!cx && localCx) { // só libera se a conexão foi criada aqui
+            localCx.release();
         }
     }
 };
@@ -68,14 +72,17 @@ export const cadastrar = async (usuario) => {   // Função para cadastrar um us
  * @returns {Promise<Object|null>} Retorna o usuário encontrado ou null se não existir
  * @throws {Error} Caso ocorra erro na consulta
  */
-export const buscarUsuarioPorId = async (id) => { // Função para buscar um usuário pelo ID (Read)
-    // Obtém uma conexão do pool
-    const cx = await pool.getConnection(); 
+export const buscarUsuarioPorId = async (id, cx = null) => { // Função para buscar um usuário pelo ID (Read)
+    let localCx = cx; // controle para saber se a conexão foi criada aqui ou recebida de fora
     try {
+        if (!localCx) {
+            // Obtém uma conexão do pool se não foi passada uma conexão
+            localCx = await pool.getConnection();
+        }
         // Query SQL para buscar um usuário pelo ID
         const query = "SELECT * FROM usuario WHERE id = ?";
         // Executa a query passando o ID como parâmetro
-        const [rows] = await cx.execute(query, [id]);
+        const [rows] = await localCx.execute(query, [id]);
         // Retorna apenas o primeiro resultado (usuário encontrado)
         return rows[0];
     } catch (error) {
@@ -83,8 +90,8 @@ export const buscarUsuarioPorId = async (id) => { // Função para buscar um usu
         throw new Error("Erro ao buscar usuário por ID: " + error.message);
     }finally{
         // Libera a conexão
-        if (cx) {
-            cx.release();
+        if (!cx && localCx) { // só libera se a conexão foi criada aqui
+            localCx.release();
         }
     }
 }
@@ -97,23 +104,26 @@ export const buscarUsuarioPorId = async (id) => { // Função para buscar um usu
  * @returns {Promise<Object|null>} Retorna o usuário encontrado ou null se não existir
  * @throws {Error} Caso ocorra erro na consulta
  */
-export const buscarUsuarioPorEmail = async (email) => { // Função para buscar um usuário pelo e-mail (Read)
-    // Obtém uma conexão do pool
-    const cx = await pool.getConnection(); 
+export const buscarUsuarioPorEmail = async (email, cx = null) => { // Função para buscar um usuário pelo e-mail (Read)
+    let localCx = cx; // controle para saber se a conexão foi criada aqui ou recebida de fora
     try {
+        if (!localCx) {
+            // Obtém uma conexão do pool se não foi passada uma conexão
+            localCx = await pool.getConnection();
+        }
         // Query SQL para buscar usuário pelo e-mail
         const query = "SELECT * FROM usuario WHERE email = ?";
         // Executa a query passando o e-mail como parâmetro
-        const [rows] = await cx.execute(query, [email]);
+        const [rows] = await localCx.execute(query, [email]);
         // Retorna apenas o primeiro resultado
         return rows[0];
     } catch (error) {
         // Lança erro em caso de falha
         throw new Error("Erro ao buscar usuário por email: " + error.message);
     }finally{
-        // Libera a conexão
-        if (cx) {
-            cx.release();
+    // Libera a conexão
+        if (!cx && localCx) { // só libera se a conexão foi criada aqui
+            localCx.release();
         }
     }
 }
