@@ -1,17 +1,69 @@
+import bcrypt from 'bcryptjs';
 import pool from "../database/data.js";
  
-export const cadastrarUsuario = async (usuario) => {    // C
+export const cadastrar = async (usuario) => {    // C
+    const cx = await pool.getConnection(); 
     try {
         const { nome, email, senha, cargo } = usuario;
         const query = "INSERT INTO usuario (nome, email, senha, cargo) VALUES (?, ?, ?, ?)";
-        const values = [nome, email, senha, cargo];
-        const [result] = await pool.execute(query, values);
+
+        const hashSenha = await bcrypt.hash(senha, 10);
+
+        const values = [nome, email, hashSenha, cargo];
+
+        const usuarioExistente = await buscarUsuarioPorEmail(email);
+        if (usuarioExistente) {
+            throw new Error("Email já cadastrado");
+        }
+
+        const [result] = await cx.execute(query, values);
+
+        if (result.affectedRows === 0) {
+            
+            throw new Error("Erro ao cadastrar usuário");
+        } 
+
         const lastIdUser = result.insertId;
-        return lastIdUser;
+        return buscarUsuarioPorId(lastIdUser);
+
     } catch (error) {
         throw new Error("Erro ao cadastrar usuário: " + error.message);
+    } finally{
+        if (cx) {
+            cx.release(); // Liberar a conexão de volta ao pool
+        }
     }
 };
+
+export const buscarUsuarioPorId = async (id) => { 
+    const cx = await pool.getConnection(); 
+    try {
+        const query = "SELECT * FROM usuario WHERE id = ?";
+        const [rows] = await cx.execute(query, [id]);
+        return rows[0];
+    } catch (error) {
+        throw new Error("Erro ao buscar usuário por ID: " + error.message);
+    }finally{
+        if (cx) {
+            cx.release();
+        }
+    }
+}
+
+export const buscarUsuarioPorEmail = async (email) => { 
+    const cx = await pool.getConnection(); 
+    try {
+        const query = "SELECT * FROM usuario WHERE email = ?";
+        const [rows] = await cx.execute(query, [email]);
+        return rows[0];
+    } catch (error) {
+        throw new Error("Erro ao buscar usuário por email: " + error.message);
+    }finally{
+        if (cx) {
+            cx.release();
+        }
+    }
+}
 
 export const listarUsuario = async () => {
     try {
