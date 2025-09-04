@@ -1,5 +1,5 @@
 DROP TABLE IF EXISTS inst_user;
-DROP TABLE IF EXISTS agenda;
+DROP TABLE IF EXISTS agendamento;
 DROP TABLE IF EXISTS salas;
 DROP TABLE IF EXISTS instituicao;
 DROP TABLE IF EXISTS usuario;
@@ -42,14 +42,14 @@ CREATE TABLE IF NOT EXISTS inst_user (
 );
 
 -- Criação da tabela Agenda
-CREATE TABLE IF NOT EXISTS agenda (
+CREATE TABLE IF NOT EXISTS agendamento (
     id INT PRIMARY KEY AUTO_INCREMENT,
     fk_usuario_id INT,
     fk_salas_id INT,
     titulo VARCHAR(255) NOT NULL,
     descricao TEXT,
-    data_hora_inicio DATETIME NOT NULL,
-    data_hora_fim DATETIME NOT NULL,
+    hora_inicio DATETIME NOT NULL,
+    hora_fim DATETIME NOT NULL,
     FOREIGN KEY (fk_usuario_id) REFERENCES usuario(id),
     FOREIGN KEY (fk_salas_id) REFERENCES salas(id)
 );

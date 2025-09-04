@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 
-// Rotas de públicas
+// Rotas públicas
 app.get('/',(req,res)=>{
     const rootDomain = req.protocol + '://' + req.get('host');
     res.status(200).json({     

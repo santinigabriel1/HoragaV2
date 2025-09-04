@@ -20,4 +20,4 @@ const productionConfig = {
     password: process.env.DB_PASSWORD
 };
 
-export const db = process.env.MODE_ENV === 'production' ? productionConfig : developmentConfig;
+export const db = process.env.NODE_ENV === 'production' ? productionConfig : developmentConfig;
