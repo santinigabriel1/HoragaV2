@@ -88,7 +88,7 @@ Makefile para operações com banco: [Makefile](Makefile)
 ## Instalação e Uso
 1. Clonar o repositório
 ```sh
-git clone <repo-url>
+git clone [<repo-url>](https://github.com/santinigabriel1/HoragaV2.git)
 cd HoragaV2
 ```
 
