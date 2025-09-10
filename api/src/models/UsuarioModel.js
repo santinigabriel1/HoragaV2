@@ -32,7 +32,7 @@ export const cadastrar = async (usuario, cx = null) => {   // Função para cada
         const hashSenha = await bcrypt.hash(senha, 10);
 
         // Monta o array de valores para substituir os placeholders da query
-        const values = [nome, email, hashSenha, cargo];
+        const values = [nome, email, hashSenha, cargo, avatar];
 
         // Verifica se já existe um usuário com o mesmo e-mail
         const usuarioExistente = await buscarPorEmail(email, localCx);
@@ -122,7 +122,8 @@ export const listar = async (search = "", cx = null) => { // Função para lista
             // Obtém uma conexão do pool se não foi passada uma conexão
             localCx = await pool.getConnection();
         }
-        let query = "SELECT * FROM Usuarios";
+        let query = "SELECT id,nome,email,cargo,avatar,createdAt,updatedAt FROM Usuarios";
+        
         let values = [];
 
         if(search){

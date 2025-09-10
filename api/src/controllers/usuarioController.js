@@ -15,14 +15,14 @@ export const cadastrar = async (req, res) => {
             return res.status(400).json(resposta);
         }
         
-        const usuarioId = await UsuarioModel.cadastrar(usuario);
-        console.log(usuario);
+        const newUsuario = await UsuarioModel.cadastrar(usuario);
+        console.log(newUsuario);
 
         const resposta = {
                 "success": true,
                 "statusCode": 201,
                 "mensagem": "Usuário cadastrado com sucesso",
-                "data": usuarioId
+                "data": newUsuario
         }
         return res.status(201).json(resposta);
     } catch (error) {
