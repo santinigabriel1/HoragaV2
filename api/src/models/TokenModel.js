@@ -17,13 +17,13 @@ export const consultar = async (token) => {
     }
 };
 
-export const criar = async (usuario,validade) => { 
+export const criar = async (usuario_id,validade) => { 
     let cx;
     try {        
         const token = crypto.randomBytes(64).toString('hex'); // 128 caracteres
         const cmdSql = 'CALL token_criar(?,?,?);';
         cx = await pool.getConnection();        
-        const [rows] = await cx.query(cmdSql, [usuario,validade,token]);
+        const [rows] = await cx.query(cmdSql, [usuario_id,validade,token]);
         return rows[0][0];        
     } 
     catch (error) {

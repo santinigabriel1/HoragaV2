@@ -9,6 +9,7 @@ export const middlewareAutenticacao = async (req, res, next) => {
     try {        
         // Obtém o cabeçalho de autorização da requisição
         const authorizationHeader = req.headers['authorization'];
+        console.log('Authorization Header:', authorizationHeader);
         
         // Verifica se o cabeçalho de autorização está presente
         if (!authorizationHeader) {

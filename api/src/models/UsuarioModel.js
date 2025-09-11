@@ -84,19 +84,18 @@ export const login = async (email, senha) => { // Função para efetuar o login 
         // Busca o usuário pelo e-mail
         const usuario = await buscarPorEmail(email, cx);
         if (!usuario) {
-            throw new Error("E-mail ou senha incorretos");
-        }
-        
+            return null; // Retorna null se o usuário não for encontrado
+        }        
         // Compara a senha fornecida com a senha criptografada no banco
         const senhaValida = await bcrypt.compare(senha, usuario.senha);
         if (!senhaValida) {
-            throw new Error("E-mail ou senha incorretos");
+            return null; // Retorna null se a senha estiver incorreta
         }
         // Remove a senha do objeto usuário antes de retornar
         delete usuario.senha;
         
         return usuario;
-
+        
     } catch (error) {
         // Lança erro em caso de falha
         throw new Error("Erro ao efetuar login: " + error.message);

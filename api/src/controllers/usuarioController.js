@@ -1,4 +1,6 @@
 import * as UsuarioModel from "../models/UsuarioModel.js";
+import * as Token from '../models/TokenModel.js';
+
 
 export const cadastrar = async (req, res) => {
     try {
@@ -16,8 +18,6 @@ export const cadastrar = async (req, res) => {
         }
         
         const newUsuario = await UsuarioModel.cadastrar(usuario);
-        console.log(newUsuario);
-
         const resposta = {
                 "success": true,
                 "statusCode": 201,
@@ -50,8 +50,7 @@ export const login = async (req, res) => {
             return res.status(400).json(resposta);
         }
 
-        const usuario = await UsuarioModel.login(email, senha);
-        console.log(usuario);
+        const usuario = await UsuarioModel.login(email, senha);        
         
         if (!usuario) {
             const resposta = {
@@ -63,11 +62,24 @@ export const login = async (req, res) => {
             return res.status(401).json(resposta);
         }
 
+        const horas_validade = 24;
+        const _token = await Token.criar(usuario.id,horas_validade);
+
+        if(!_token){
+            throw new Error('Erro ao gerar token');
+        }
+
+        let data = {
+            "token":     _token.chave_token,
+            "expiracao": _token.validade,
+            "usuario":   usuario
+        }
+        
         const resposta = {
             "success": true,
             "statusCode": 200,
             "mensagem": "Login realizado com sucesso",
-            "data": usuario
+            "data": data
         };
         res.status(200).json(resposta);
     } catch (error) {
@@ -80,6 +92,7 @@ export const login = async (req, res) => {
         res.status(500).json(resposta);
     }
 };
+
 
 export const listar = async (req, res) => {
     try {

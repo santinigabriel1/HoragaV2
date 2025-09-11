@@ -70,7 +70,7 @@ CREATE TABLE Agendamentos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Criação da tabela de tokens
-CREATE TABLE Token (
+CREATE TABLE `Token` (
   usuario BIGINT unsigned NOT NULL,
   chave_token varchar(255) DEFAULT NULL,
   validade datetime DEFAULT NULL,
@@ -108,7 +108,7 @@ DELIMITER ;;
 CREATE PROCEDURE `token_consultar`(IN `_chave_token` VARCHAR(255))
 BEGIN
 	SET @usuario = SUBSTRING_INDEX(_chave_token, '.', 1);
-	SELECT * FROM token WHERE token.usuario = @usuario AND token.chave_token LIKE _chave_token;
+	SELECT * FROM `Token` WHERE usuario = @usuario AND chave_token LIKE _chave_token;
 END ;;
 DELIMITER ;
 
@@ -117,17 +117,17 @@ CREATE PROCEDURE `token_criar`(IN `_usuario` INT, IN `_validade` INT, IN `_chave
 BEGIN
     SET @token = CONCAT(_usuario, '.', _chave_token);
     SET @vaidade = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL _validade HOUR);
-    INSERT INTO token(usuario, chave_token, validade) VALUES(_usuario, @token, @vaidade) ON DUPLICATE KEY UPDATE chave_token = VALUES(chave_token), validade = VALUES(validade);
-    SELECT * FROM token WHERE token.usuario = _usuario;
+    INSERT INTO `Token`(usuario, chave_token, validade) VALUES(_usuario, @token, @vaidade) ON DUPLICATE KEY UPDATE chave_token = VALUES(chave_token), validade = VALUES(validade);
+    SELECT * FROM `Token` WHERE usuario = _usuario;
 END ;;
 DELIMITER ;
 
 DELIMITER ;;
 CREATE PROCEDURE `token_extender`(IN `_usuario` INT, IN `_horas` INT)
     NO SQL
-UPDATE token
+UPDATE `Token`
 SET 
 	validade = DATE_ADD(validade, INTERVAL _horas HOUR)
 WHERE 
-	token.usuario = _usuario ;;
+	usuario = _usuario ;;
 DELIMITER ;
