@@ -1,13 +1,13 @@
-import pool from '../database/data.js';
-import bcrypt from 'bcryptjs';
+import crypto from "crypto";
+import pool from "../database/data.js";
 
 export const consultar = async (token) => {
     let cx;
     try {
         cx = await pool.getConnection();
         const cmdSql = 'CALL token_consultar(?)';
-        const [dados, meta_dados] = await cx.query(cmdSql, token);
-        return dados[0][0];
+        const [rows] = await cx.query(cmdSql, token);
+        return rows[0][0];
     } 
     catch (error) {
         throw error;
@@ -17,17 +17,14 @@ export const consultar = async (token) => {
     }
 };
 
-export const criar = async (usuario,validade,chave_token=new Date()) => { 
+export const criar = async (usuario,validade) => { 
     let cx;
     try {        
-        const hashToken = await bcrypt.hash(chave_token.toString(), 1);        
+        const token = crypto.randomBytes(64).toString('hex'); // 128 caracteres
         const cmdSql = 'CALL token_criar(?,?,?);';
         cx = await pool.getConnection();        
-        const [dados, meta_dados] = await cx.query(cmdSql, [usuario,validade,hashToken]);
-        if(dados[0][0]){
-            return dados[0][0];
-        }
-        return false;
+        const [rows] = await cx.query(cmdSql, [usuario,validade,token]);
+        return rows[0][0];        
     } 
     catch (error) {
         throw error;
@@ -42,8 +39,8 @@ export const extender = async (usuario,tempo_horas) => {
     try {        
         const cmdSql = 'CALL token_extender(?,?);';
         cx = await pool.getConnection();        
-        const [dados, meta_dados] = await cx.query(cmdSql, [usuario,tempo_horas]);
-        return dados.affectedRows > 0;
+        const [rows] = await cx.query(cmdSql, [usuario,tempo_horas]);
+        return rows.affectedRows > 0;
     } 
     catch (error) {
         throw error;
