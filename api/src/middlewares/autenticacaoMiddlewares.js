@@ -5,11 +5,10 @@ import * as Token from '../models/TokenModel.js';
 let sessions = [];
 
 // Define uma função middleware de autenticação
-export const middlewareAutenticacao = async (req, res, next) => {
+const autentica = async (req, res, next) => {
     try {        
         // Obtém o cabeçalho de autorização da requisição
         const authorizationHeader = req.headers['authorization'];
-        console.log('Authorization Header:', authorizationHeader);
         
         // Verifica se o cabeçalho de autorização está presente
         if (!authorizationHeader) {
@@ -42,34 +41,35 @@ export const middlewareAutenticacao = async (req, res, next) => {
 
         // Obtém o ID de login a partir do token
         const [loginId] = token.split('.');
+        const chave_token = token.replace(`${loginId}.`, "");
         // Encontra o índice da sessão correspondente ao usuário
         let sessionIndex = sessions.findIndex(session => session.usuario == loginId);
         // Obtém a sessão do array de sessões
-        let session_id = sessions[sessionIndex];
+        let session_user = sessions[sessionIndex];
         // Obtém a hora atual
         let horaAtual = new Date();
 
         // Verifica se a sessão foi encontrada
-        if(session_id){
+        if(session_user){
             // Define um tempo limite de uma hora a partir da hora atual
             let fimTemp = new Date(horaAtual.getTime()+3600000);
             // Verifica se a validade da sessão é menor que o tempo limite
-            if(session_id.validade < fimTemp){
+            if(session_user.validade < fimTemp){
                 // Remove a sessão expirada do array de sessões
                 sessions.splice(sessionIndex, 1);
-                session_id = null;
+                session_user = null;
             }
         }
 
         // Se a sessão não foi encontrada ou foi removida
-        if(!session_id){
+        if(!session_user){
             // Consulta o token para obter a sessão
-            session_id = await Token.consultar(token);
-            if(session_id){
+            session_user = await Token.consultarEValidar(loginId,chave_token);
+            if(session_user){
                 // Verifica se a validade da sessão é maior que a hora atual
-                if(session_id.validade > new Date()){
+                if(session_user.validade > new Date()){
                     // Calcula o tempo restante para a sessão expirar em minutos
-                    let tempoParaExpirar = (session_id.validade.getTime() - horaAtual.getTime())/60000;
+                    let tempoParaExpirar = (session_user.validade.getTime() - horaAtual.getTime())/60000;
                     if(tempoParaExpirar < 60){
                         // Se a sessão expira em menos de uma hora, estende a validade em 24 horas
                         let horas_extra_token = 24;
@@ -77,7 +77,7 @@ export const middlewareAutenticacao = async (req, res, next) => {
                     }
                     else{
                         // Adiciona a sessão ao array de sessões
-                        sessions.push(session_id);
+                        sessions.push(session_user);
                     }
                 }
                 else{
@@ -96,7 +96,7 @@ export const middlewareAutenticacao = async (req, res, next) => {
         }
         
         // Se a sessão é válida
-        if(session_id){
+        if(session_user){
             // Define o loginId na requisição para uso posterior
             req.loginId = loginId;
             // Chama o próximo middleware
@@ -128,3 +128,4 @@ export const middlewareAutenticacao = async (req, res, next) => {
     }
 };
 
+export default autentica;

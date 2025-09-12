@@ -7,9 +7,9 @@ INSERT INTO Instituicoes (nome, descricao) VALUES
 
 -- Usuários
 INSERT INTO Usuarios (nome, email, senha, cargo) VALUES
-('Admin', 'admin@teste.com', '$2a$10$HASHDAQUI', 'Administrador'),
-('Maria Silva', 'maria@teste.com', '$2a$10$HASHDAQUI', 'Professor'),
-('João Souza', 'joao@teste.com', '$2a$10$HASHDAQUI', 'Aluno');
+('Admin', 'admin@gmail.com', '$2b$10$afbzMqlv1VvmDhsq.rKa0OgGu8H.BCM30iBE2uKD40Vn4iYSn8ydO', 'Administrador'),
+('Maria Silva', 'maria@gmail.com', '$2b$10$afbzMqlv1VvmDhsq.rKa0OgGu8H.BCM30iBE2uKD40Vn4iYSn8ydO', 'Professor'),
+('Joao Souza', 'joao@gmail.com', '$2b$10$afbzMqlv1VvmDhsq.rKa0OgGu8H.BCM30iBE2uKD40Vn4iYSn8ydO', 'Aluno');
 
 -- Relacionamento usuário-instituição
 INSERT INTO inst_user (fk_instituicao_id, fk_usuario_id) VALUES

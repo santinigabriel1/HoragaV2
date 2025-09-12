@@ -8,11 +8,6 @@ DROP TABLE IF EXISTS Instituicoes;
 DROP TABLE IF EXISTS Token;
 DROP TABLE IF EXISTS Usuarios;
 
-DROP PROCEDURE IF EXISTS token_consultar;
-DROP PROCEDURE IF EXISTS token_criar;
-DROP PROCEDURE IF EXISTS token_extender;
-
-
 -- Criação da tabela de instituições
 CREATE TABLE Instituicoes (
     id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
@@ -103,31 +98,3 @@ ALTER TABLE Agendamentos ADD CONSTRAINT FK_Agendamentos_Salas
 ALTER TABLE Token ADD CONSTRAINT FK_Token_Usuarios
     FOREIGN KEY (usuario)
     REFERENCES Usuarios (id) ON DELETE CASCADE; 
-
-DELIMITER ;;
-CREATE PROCEDURE `token_consultar`(IN `_chave_token` VARCHAR(255))
-BEGIN
-	SET @usuario = SUBSTRING_INDEX(_chave_token, '.', 1);
-	SELECT * FROM `Token` WHERE usuario = @usuario AND chave_token LIKE _chave_token;
-END ;;
-DELIMITER ;
-
-DELIMITER ;;
-CREATE PROCEDURE `token_criar`(IN `_usuario` INT, IN `_validade` INT, IN `_chave_token` VARCHAR(255))
-BEGIN
-    SET @token = CONCAT(_usuario, '.', _chave_token);
-    SET @vaidade = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL _validade HOUR);
-    INSERT INTO `Token`(usuario, chave_token, validade) VALUES(_usuario, @token, @vaidade) ON DUPLICATE KEY UPDATE chave_token = VALUES(chave_token), validade = VALUES(validade);
-    SELECT * FROM `Token` WHERE usuario = _usuario;
-END ;;
-DELIMITER ;
-
-DELIMITER ;;
-CREATE PROCEDURE `token_extender`(IN `_usuario` INT, IN `_horas` INT)
-    NO SQL
-UPDATE `Token`
-SET 
-	validade = DATE_ADD(validade, INTERVAL _horas HOUR)
-WHERE 
-	usuario = _usuario ;;
-DELIMITER ;

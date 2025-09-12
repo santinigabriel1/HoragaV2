@@ -70,7 +70,7 @@ export const login = async (req, res) => {
         }
 
         let data = {
-            "token":     _token.chave_token,
+            "token":    usuario.id+'.'+_token.chave_token,
             "expiracao": _token.validade,
             "usuario":   usuario
         }
