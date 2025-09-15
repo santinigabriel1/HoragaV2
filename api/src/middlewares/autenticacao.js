@@ -1,19 +1,19 @@
 import * as sessoesModel from '../models/SessoesModel.js';
 import * as sessoesCache from '../utils/sessoesCache.js';
-import * as response from '../utils/response.js'
+import * as responses from '../utils/responsess.js'
 
 export default async function autenticar(req, res, next) {
     try {        
         const authorizationHeader = req.headers['authorization'];
         
         if (!authorizationHeader) {
-            return response.error(res,{statusCode: 498, message:"Token de autenticação não fornecido"});            
+            return responses.error(res,{statusCode: 498, message:"Token de autenticação não fornecido"});            
         }
         
         const [bearer, token] = authorizationHeader.split(' ');
         
         if (bearer !== 'Bearer' || !token) {
-            return response.error(res,{statusCode: 498, message:"Formato de token inválido"});            
+            return responses.error(res,{statusCode: 498, message:"Formato de token inválido"});            
         }
 
         const [loginId] = token.split('.');
@@ -31,11 +31,11 @@ export default async function autenticar(req, res, next) {
 
         sessao_usuario = await sessoesModel.buscarSessao(loginId,chave_token);
         if(!sessao_usuario){
-            return response.error(res,{statusCode:498, message:'Token de autenticação inválido'});
+            return responses.error(res,{statusCode:498, message:'Token de autenticação inválido'});
         }
 
         if(sessao_usuario.validade < new Date()){
-            return response.error(res,{statusCode:498, message:'Token de autenticação expirou'});
+            return responses.error(res,{statusCode:498, message:'Token de autenticação expirou'});
         }
 
         const horaAtual = new Date();
@@ -51,6 +51,6 @@ export default async function autenticar(req, res, next) {
         return;
                
     } catch (error) {
-        return response.error(res,{statusCode:500,message:`Erro interno do servidor: ${error}`})        
+        return responses.error(res,{statusCode:500,message:`Erro interno do servidor: ${error}`})        
     }
 };
