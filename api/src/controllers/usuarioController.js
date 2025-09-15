@@ -1,5 +1,6 @@
 import * as UsuarioModel from "../models/UsuarioModel.js";
-import * as Token from '../models/TokenModel.js';
+import * as Sessoes from '../models/SessoesModel.js';
+import * as Response from '../utils/response.js'
 
 
 export const cadastrar = async (req, res) => {
@@ -8,13 +9,7 @@ export const cadastrar = async (req, res) => {
         
         const {nome, email, senha, cargo} = usuario
         if(!nome || !email || !senha || !cargo){
-            const resposta  = {
-                "success": false,
-                "status": "erro",
-                "statusCode": 400,
-                "mensagem": "Todos os campos são obrigatórios"
-            }
-            return res.status(400).json(resposta);
+            return Response.error(res, {statusCode:400, message: "Todos os campos são obrigatórios"});            
         }
         
         const newUsuario = await UsuarioModel.cadastrar(usuario);
@@ -63,15 +58,15 @@ export const login = async (req, res) => {
         }
 
         const horas_validade = 24;
-        const _token = await Token.criar(usuario.id,horas_validade);
+        const sessao = await Sessoes.criar(usuario.id,horas_validade);
 
-        if(!_token){
-            throw new Error('Erro ao gerar token');
+        if(!sessao){
+            throw new Error('Erro ao gerar sessão');
         }
 
         let data = {
-            "token":    usuario.id+'.'+_token.chave_token,
-            "expiracao": _token.validade,
+            "token":    usuario.id+'.'+sessao.token,
+            "expiracao": sessao.validade,
             "usuario":   usuario
         }
         
@@ -132,6 +127,45 @@ export const listar = async (req, res) => {
 export const buscarPorId = async (req, res) => {
     try {
         const id = req.params.id;
+        const usuario = await UsuarioModel.buscarPorId(id);
+        if (!usuario) {
+            const resposta = {
+                "success": false,
+                "statusCode": 404,
+                "mensagem": "Usuário não encontrado",
+                "data": null
+            }
+            return res.status(404).json(resposta);
+        }
+        const resposta = {
+            "success": true,
+            "statusCode": 200,
+            "mensagem": "Usuário encontrado",
+            "data": usuario
+        }
+        res.status(200).json(resposta);
+    } catch (error) {
+        const resposta = {
+            "success": false,
+            "statusCode": 500,
+            "mensagem": error.message,
+            "data": null
+        }
+        res.status(500).json(resposta);
+    }
+};
+export const buscarUsuarioLogado = async (req, res) => {
+    try {
+        const id = req.loginId;
+        if(!id){
+             const resposta = {
+                "success": false,
+                "statusCode": 404,
+                "mensagem": "ID de sessão não encontrado",
+                "data": null
+            }
+            return res.status(404).json(resposta);
+        }
         const usuario = await UsuarioModel.buscarPorId(id);
         if (!usuario) {
             const resposta = {

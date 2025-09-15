@@ -165,7 +165,9 @@ export const buscarPorId = async (id, cx = null) => { // Função para buscar um
         // Executa a query passando o ID como parâmetro
         const [rows] = await localCx.execute(query, [id]);
         // Retorna apenas o primeiro resultado (usuário encontrado)
-        return rows[0];
+        let usuario = rows[0]
+        delete usuario.senha;
+        return usuario;
     } catch (error) {
         // Lança erro em caso de falha
         throw new Error("Erro ao buscar usuário por ID: " + error.message);
@@ -196,7 +198,8 @@ export const buscarPorEmail = async (email, cx = null) => { // Função para bus
         // Executa a query passando o e-mail como parâmetro
         const [rows] = await localCx.execute(query, [email]);
         // Retorna apenas o primeiro resultado
-        return rows[0];
+        let usuario = rows[0];
+        return usuario;
     } catch (error) {
         // Lança erro em caso de falha
         throw new Error("Erro ao buscar usuário por email: " + error.message);

@@ -5,7 +5,7 @@ DROP TABLE IF EXISTS inst_user;
 DROP TABLE IF EXISTS Agendamentos;
 DROP TABLE IF EXISTS Salas;
 DROP TABLE IF EXISTS Instituicoes;
-DROP TABLE IF EXISTS Token;
+DROP TABLE IF EXISTS Sessoes;
 DROP TABLE IF EXISTS Usuarios;
 
 -- Criação da tabela de instituições
@@ -64,10 +64,10 @@ CREATE TABLE Agendamentos (
     updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Criação da tabela de tokens
-CREATE TABLE `Token` (
+-- Criação da tabela de Sessoes
+CREATE TABLE Sessoes (
   usuario BIGINT unsigned NOT NULL,
-  chave_token varchar(255) DEFAULT NULL,
+  `token` varchar(255) DEFAULT NULL,
   validade datetime DEFAULT NULL,
   PRIMARY KEY (usuario)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -95,6 +95,6 @@ ALTER TABLE Agendamentos ADD CONSTRAINT FK_Agendamentos_Usuarios
 ALTER TABLE Agendamentos ADD CONSTRAINT FK_Agendamentos_Salas
     FOREIGN KEY (fk_salas_id)
     REFERENCES Salas (id) ON DELETE CASCADE;
-ALTER TABLE Token ADD CONSTRAINT FK_Token_Usuarios
+ALTER TABLE Sessoes ADD CONSTRAINT FK_Sessoes_Usuarios
     FOREIGN KEY (usuario)
     REFERENCES Usuarios (id) ON DELETE CASCADE; 
