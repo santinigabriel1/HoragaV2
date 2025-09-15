@@ -1,6 +1,6 @@
 import * as sessoesModel from '../models/SessoesModel.js';
 import * as sessoesCache from '../utils/sessoesCache.js';
-import * as responses from '../utils/responsess.js'
+import * as responses from '../utils/responses.js'
 
 export default async function autenticar(req, res, next) {
     try {        
