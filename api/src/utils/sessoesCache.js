@@ -5,13 +5,13 @@ let sessoes = [];
  * Adicionar um sessão em uso ao cache de sessoes
  *
  * @param {number} usuario - Id do usuário
- * @param {string} chave_token - Token de 128 bit gerado
+ * @param {string} token - Token de 128 bit gerado
  * @returns {void} Sem retorno
  */
-export function addSessao(usuario, chave_token) {
+export function addSessao(usuario, token) {
   sessoes.push({
     usuario,
-    chave_token,
+    token,
     criadoEm: Date.now()
   });
 }
@@ -25,7 +25,7 @@ export function addSessao(usuario, chave_token) {
  * @returns {Object||null} - Se existente retorna a sessão do usuario, caso contrário null
  */
 export function buscarSessao(usuario, token) {
-  return sessoes.find(s => (s.usuario === usuario && s.chave_token === token));
+  return sessoes.find(s => (s.usuario === usuario && s.token === token));
 }
 
 // Função para limpar sessões expiradas

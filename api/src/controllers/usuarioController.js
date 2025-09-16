@@ -12,8 +12,9 @@ export const cadastrar = async (req, res) => {
     }
 
     const newUsuario = await UsuarioModel.cadastrar(req.body);
+    delete newUsuario.senha;
 
-    return responses.created(res, { message: "Usuário cadastrado com sucesso", data: usuario });
+    return responses.created(res, { message: "Usuário cadastrado com sucesso", data: newUsuario });
 
   } catch (error) {
     return responses.error(res, { message: error.message });
@@ -31,8 +32,8 @@ export const login = async (req, res) => {
     if (!usuario) {
       return responses.error(res, { statusCode: 401, message: "Credenciais inválidas" });
     }
-
-    const horas_validade = 24;
+    //Efetuou login com sucesso
+    const horas_validade = 36;
     const sessao = await Sessoes.criar(usuario.id, horas_validade);
     
     const data = {

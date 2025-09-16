@@ -51,8 +51,7 @@ export const cadastrar = async (usuario, cx = null) => {   // Função para cada
         // Pega o ID do último usuário inserido
         const lastIdUser = result.insertId;
         // Retorna o usuário cadastrado, buscando por ID
-        const usuarioCadastrado = await buscarPorId(lastIdUser, localCx);
-        delete usuarioCadastrado.senha; // Remove a senha do objeto antes de retornar
+        const usuarioCadastrado = await buscarPorId(lastIdUser, localCx);       
         return usuarioCadastrado;
 
     } catch (error) {
@@ -92,7 +91,7 @@ export const login = async (email, senha) => { // Função para efetuar o login 
             return null; // Retorna null se a senha estiver incorreta
         }
         // Remove a senha do objeto usuário antes de retornar
-        delete usuario.senha;
+        
         
         return usuario;
         
@@ -165,8 +164,7 @@ export const buscarPorId = async (id, cx = null) => { // Função para buscar um
         // Executa a query passando o ID como parâmetro
         const [rows] = await localCx.execute(query, [id]);
         // Retorna apenas o primeiro resultado (usuário encontrado)
-        let usuario = rows[0]
-        delete usuario.senha;
+        let usuario = rows[0];
         return usuario;
     } catch (error) {
         // Lança erro em caso de falha

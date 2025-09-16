@@ -22,7 +22,7 @@ const consultarPorUsuario = async (usuario, cx = null) => {
     }
     const cmdSql = "SELECT * FROM Sessoes WHERE usuario = ?;";
     const [rows] = await localCx.query(cmdSql, [usuario]);
-    return rows.length > 0 ? rows[0] : null;
+    return (rows.length > 0) ? rows[0] : null;
   } catch (error) {
     throw new Error("Erro ao buscar usuário por ID: " + error.message);
   } finally {
@@ -84,7 +84,9 @@ export const criar = async (usuario, validade) => {
     if (rows.affectedRows === 0) {
       throw new Error("Erro ao criar uma sessão para o usuário");
     }
+
     return await consultarPorUsuario(usuario, cx);
+    
   } catch (error) {
     throw error;
   } finally {

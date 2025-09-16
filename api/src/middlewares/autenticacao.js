@@ -27,9 +27,10 @@ export default async function autenticar(req, res, next) {
             return;
         }
         
-        // ****************************************************************************************
+        // Buscar a sessão no banco de dados ************************************************************
 
         sessao_usuario = await sessoesModel.buscarSessao(loginId,chave_token);
+        
         if(!sessao_usuario){
             return responses.error(res,{statusCode:498, message:'Token de autenticação inválido'});
         }
