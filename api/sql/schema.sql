@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS Agendamentos;
 DROP TABLE IF EXISTS Salas;
 DROP TABLE IF EXISTS Instituicoes;
 DROP TABLE IF EXISTS Sessoes;
+DROP TABLE IF EXISTS Token;
 DROP TABLE IF EXISTS Usuarios;
 
 -- Criação da tabela de instituições
