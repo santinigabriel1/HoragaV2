@@ -17,10 +17,10 @@ export const cadastrar = async (req, res) => {
             });
         }
 
-        const newInstituicao = { organizador, nome, descricao };
+        const instituicao = { organizador, nome, descricao };
 
-        const createdInstituicao = await InstituicaoModel.cadastrar(newInstituicao);
-        return responses.created(res, {message: "Instituição cadastrada com sucesso", data: createdInstituicao});
+        const instituicaoCriada = await InstituicaoModel.cadastrar(instituicao);
+        return responses.created(res, {message: "Instituição cadastrada com sucesso", data: instituicaoCriada});
     } catch (error) {
         return responses.error(res, { message: error.message });
     }
@@ -98,6 +98,7 @@ export const listar = async (req, res) => {
 
 export const atualizarTudo = async (req, res) => {
       try {
+        const organizador =   req.loginId;
         const id = req.params.id;
         const instituicoes = req.body;
     
@@ -114,6 +115,15 @@ export const atualizarTudo = async (req, res) => {
           return responses.error(res, { statusCode: 400, message: "Todos os campos (nome, descricao) são obrigatórios" });
         }
 
+        const instituicaoExistente = await InstituicaoModel.buscarPorId(id);
+        if (!instituicaoExistente) {
+          return responses.notFound(res, { message: "Instituição não encontrada" });
+        }
+
+        if (instituicaoExistente.organizador !== organizador) {
+          return responses.error(res, { statusCode: 403, message: "Você não tem permissão para atualizar esta instituição" });
+        }
+
         const resultado = await InstituicaoModel.atualizar(id, instituicoes);
         if (!resultado) {
           return responses.notFound(res, { message: "Instituição não encontrada" });
@@ -128,6 +138,7 @@ export const atualizarTudo = async (req, res) => {
 
     export const atualizar = async (req, res) => {
       try {
+        const organizador =   req.loginId;
         const id = req.params.id;
         const instituicoes = req.body;
     
@@ -144,6 +155,15 @@ export const atualizarTudo = async (req, res) => {
           return responses.error(res, { statusCode: 400, message: "Pelo menos um campo (nome ou descricao) deve ser fornecido para atualização" });
         }
 
+        const instituicaoExistente = await InstituicaoModel.buscarPorId(id);
+        if (!instituicaoExistente) {
+          return responses.notFound(res, { message: "Instituição não encontrada" });
+        }
+
+        if (instituicaoExistente.organizador !== organizador) {
+          return responses.error(res, { statusCode: 403, message: "Você não tem permissão para atualizar esta instituição" });
+        }
+
         const resultado = await InstituicaoModel.atualizar(id, instituicoes);
         if (!resultado) {
           return responses.notFound(res, { message: "Instituição não encontrada" });
@@ -158,6 +178,7 @@ export const atualizarTudo = async (req, res) => {
     
 export const deletar = async (req, res) => {
     try {
+        const organizador =   req.loginId;
         const id = req.params.id;
 
         if (!id) {
@@ -168,10 +189,17 @@ export const deletar = async (req, res) => {
             return responses.error(res, { statusCode: 400, message: "ID da instituição deve ser um número válido" });
         }
 
-        const resultado = await InstituicaoModel.deletar(id);
-        if (!resultado) {
-            return responses.notFound(res, { message: "Instituição não encontrada" });
+        const instituicaoExistente = await InstituicaoModel.buscarPorId(id);
+        if (!instituicaoExistente) {
+          return responses.notFound(res, { message: "Instituição não encontrada" });
         }
+
+        if (instituicaoExistente.organizador !== organizador) {
+          return responses.error(res, { statusCode: 403, message: "Você não tem permissão para atualizar esta instituição" });
+        }
+
+        const resultado = await InstituicaoModel.deletar(id);
+       
 
         return responses.success(res, { message: "Instituição deletada com sucesso", data: resultado });
 

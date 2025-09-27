@@ -92,15 +92,17 @@ export const listarPorOrganizador = async (organizadorId, cx = null) => {
     }
 }
 
-export const listar = async (cx = null) => {
+export const listar = async (search, cx = null) => {
     let localCx = cx;
     try {
         if (!localCx) {            
             localCx = await pool.getConnection();
         }
         
-        const query = "SELECT * FROM Instituicoes";
-        const [rows] = await localCx.execute(query);
+        const query = "SELECT * FROM Instituicoes WHERE nome LIKE ? OR descricao LIKE ?";
+        const searchPattern = `%${search}%`;
+        const queryParams = [searchPattern, searchPattern];
+        const [rows] = await localCx.execute(query, queryParams);
         return rows;
     } catch (error) {
         throw new Error("Erro ao listar todas as Instituições: " + error.message);

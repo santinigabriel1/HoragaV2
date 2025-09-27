@@ -48,6 +48,8 @@ CREATE TABLE inst_user (
     id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
     fk_instituicao_id BIGINT unsigned NOT NULL,
     fk_usuario_id BIGINT unsigned NOT NULL,
+    aceito BOOLEAN DEFAULT FALSE, -- indica se o convite foi aceito
+    bloqueado BOOLEAN DEFAULT FALSE, -- indica se o usuário está bloqueado na instituição
     createdAt datetime DEFAULT CURRENT_TIMESTAMP,
     updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
