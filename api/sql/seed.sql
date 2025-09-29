@@ -12,7 +12,7 @@ INSERT INTO Usuarios (nome, email, senha, cargo) VALUES
 ('Joao Souza', 'joao@gmail.com', '$2b$10$afbzMqlv1VvmDhsq.rKa0OgGu8H.BCM30iBE2uKD40Vn4iYSn8ydO', 'Aluno');
 
 -- Relacionamento usuário-instituição
-INSERT INTO inst_user (fk_instituicao_id, fk_usuario_id) VALUES
+INSERT INTO InstituicaoUsuario (fk_instituicao_id, fk_usuario_id) VALUES
 (1, 1),
 (1, 2),
 (2, 3);

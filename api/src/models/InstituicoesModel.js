@@ -1,5 +1,16 @@
 import pool from "../database/data.js";
 
+/**
+ * Cadastra uma nova instituição no banco de dados.
+ *
+ * @param {Object} instituicao - Dados da instituição.
+ * @param {number} instituicao.organizador - ID do organizador.
+ * @param {string} instituicao.nome - Nome da instituição.
+ * @param {string} instituicao.descricao - Descrição da instituição.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional com o banco.
+ * @returns {Promise<Object>} Retorna a instituição recém-cadastrada.
+ * @throws {Error} Caso ocorra erro durante o cadastro.
+ */
 export const cadastrar = async (instituicao, cx = null) => { 
     let localCx = cx;
     try {
@@ -31,6 +42,15 @@ export const cadastrar = async (instituicao, cx = null) => {
     }
 };
 
+
+/**
+ * Busca uma instituição pelo ID.
+ *
+ * @param {number} id - ID da instituição.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional com o banco.
+ * @returns {Promise<Object|null>} Retorna a instituição encontrada ou null se não existir.
+ * @throws {Error} Caso ocorra erro na consulta.
+ */
 export const buscarPorId = async (id, cx = null) => {
     let localCx = cx;
     try {
@@ -52,6 +72,15 @@ export const buscarPorId = async (id, cx = null) => {
     }
 }
 
+
+/**
+ * Busca uma instituição pelo nome.
+ *
+ * @param {string} nome - Nome da instituição.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional com o banco.
+ * @returns {Promise<Object|null>} Retorna a instituição encontrada ou null se não existir.
+ * @throws {Error} Caso ocorra erro na consulta.
+ */
 export const buscarPorNome = async (nome, cx = null) => {
     let localCx = cx;
     try {
@@ -73,6 +102,14 @@ export const buscarPorNome = async (nome, cx = null) => {
     }
 };
 
+/**
+ * Lista todas as instituições de um organizador específico.
+ *
+ * @param {number} organizadorId - ID do organizador.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional com o banco.
+ * @returns {Promise<Object[]>} Retorna a lista de instituições do organizador.
+ * @throws {Error} Caso ocorra erro na consulta.
+ */
 export const listarPorOrganizador = async (organizadorId, cx = null) => {
     let localCx = cx;
     try {
@@ -92,6 +129,14 @@ export const listarPorOrganizador = async (organizadorId, cx = null) => {
     }
 }
 
+/**
+ * Lista todas as instituições filtradas por nome ou descrição.
+ *
+ * @param {string} search - Texto de busca para nome ou descrição.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional com o banco.
+ * @returns {Promise<Object[]>} Retorna a lista de instituições encontradas.
+ * @throws {Error} Caso ocorra erro na consulta.
+ */
 export const listar = async (search, cx = null) => {
     let localCx = cx;
     try {
@@ -113,6 +158,18 @@ export const listar = async (search, cx = null) => {
     }
 }
 
+/**
+ * Atualiza todos os campos de uma instituição.
+ *
+ * @param {number} id - ID da instituição.
+ * @param {Object} instituicao - Dados da instituição.
+ * @param {number} instituicao.organizador - ID do organizador.
+ * @param {string} instituicao.nome - Nome da instituição.
+ * @param {string} instituicao.descricao - Descrição da instituição.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional com o banco.
+ * @returns {Promise<Object>} Retorna a instituição atualizada.
+ * @throws {Error} Caso ocorra erro durante a atualização.
+ */
 export const atualizarTudo = async (id, instituicao, cx = null) => {
     let localCx = cx;
     try {
@@ -142,6 +199,15 @@ export const atualizarTudo = async (id, instituicao, cx = null) => {
     }
 };
 
+/**
+ * Atualiza apenas os campos fornecidos de uma instituição.
+ *
+ * @param {number} id - ID da instituição.
+ * @param {Object} instituicao - Campos para atualização.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional com o banco.
+ * @returns {Promise<Object>} Retorna a instituição atualizada.
+ * @throws {Error} Caso ocorra erro durante a atualização.
+ */
 export const atualizar = async (id, instituicao, cx = null) => {
     let localCx = cx;
     try {
@@ -183,6 +249,14 @@ export const atualizar = async (id, instituicao, cx = null) => {
     }
 };
 
+/**
+ * Deleta uma instituição pelo ID.
+ *
+ * @param {number} id - ID da instituição.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional com o banco.
+ * @returns {Promise<boolean>} Retorna true se a instituição foi deletada com sucesso.
+ * @throws {Error} Caso ocorra erro durante a exclusão.
+ */
 export const deletar = async (id, cx = null) => {
     let localCx = cx;
     try {

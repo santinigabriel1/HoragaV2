@@ -1,7 +1,8 @@
 CREATE DATABASE IF NOT EXISTS agendamento;
 USE agendamento;
 -- Remove as tabelas se já existirem (ordem importa por causa das FKs)
-DROP TABLE IF EXISTS inst_user;
+DROP TABLE IF EXISTS inst_user; -- IGNORE
+DROP TABLE IF EXISTS InstituicaoUsuario;
 DROP TABLE IF EXISTS Agendamentos;
 DROP TABLE IF EXISTS Salas;
 DROP TABLE IF EXISTS Instituicoes;
@@ -44,14 +45,15 @@ CREATE TABLE Usuarios (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Relação muitos-para-muitos entre usuários e instituições
-CREATE TABLE inst_user (
+CREATE TABLE InstituicaoUsuario (
     id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
     fk_instituicao_id BIGINT unsigned NOT NULL,
     fk_usuario_id BIGINT unsigned NOT NULL,
     aceito BOOLEAN DEFAULT FALSE, -- indica se o convite foi aceito
     bloqueado BOOLEAN DEFAULT FALSE, -- indica se o usuário está bloqueado na instituição
     createdAt datetime DEFAULT CURRENT_TIMESTAMP,
-    updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_instituicao_usuario (fk_instituicao_id, fk_usuario_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Criação da tabela de agendamentos
@@ -83,11 +85,11 @@ ALTER TABLE Salas ADD CONSTRAINT FK_Salas_Instituicoes
     FOREIGN KEY (fk_instituicao_id)
     REFERENCES Instituicoes (id) ON DELETE CASCADE;
 
-ALTER TABLE inst_user ADD CONSTRAINT FK_inst_user_Instituicoes
+ALTER TABLE InstituicaoUsuario ADD CONSTRAINT FK_InstituicaoUsuario_Instituicoes
     FOREIGN KEY (fk_instituicao_id)
     REFERENCES Instituicoes (id) ON DELETE CASCADE;
 
-ALTER TABLE inst_user ADD CONSTRAINT FK_inst_user_Usuarios
+ALTER TABLE InstituicaoUsuario ADD CONSTRAINT FK_InstituicaoUsuario_Usuarios
     FOREIGN KEY (fk_usuario_id)
     REFERENCES Usuarios (id) ON DELETE CASCADE;
 
