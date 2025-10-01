@@ -102,10 +102,10 @@ export const cadastrar = async (instituicao_usuario, cx = null) => {
         if (!localCx) {
             localCx = await pool.getConnection();
         }
-        const { instituicao, usuario } = instituicao_usuario;
+        const { instituicao, usuario, aceito } = instituicao_usuario;
 
         const query = `INSERT INTO InstituicaoUsuario (fk_instituicao_id, fk_usuario_id, aceito) VALUES (?, ?, ?);`;
-        const values = [instituicao, usuario, true];
+        const values = [instituicao, usuario, aceito || true];
 
         const [result] = await localCx.execute(query, values);
 
@@ -234,6 +234,43 @@ export const deletar = async (id, cx = null) => {
         const query = "DELETE FROM InstituicaoUsuario WHERE id = ?;";
     
         const [result] = await localCx.execute(query, [id]);
+
+        if (result.affectedRows === 0) {
+            throw new Error("Erro ao remover usuário da instituição.");
+        } 
+
+        return true;
+
+    } catch (error) {
+        throw new Error("Erro: " + error.message);
+    } finally{
+        // Garante que a conexão será liberada de volta ao pool
+        if (!cx && localCx) { // só libera se a conexão foi criada aqui
+            localCx.release();
+        }
+    }
+};
+
+/**
+ * Sai do vínculo entre usuário e instituição.
+ *
+ * @async
+ * @function deletar
+ * @param {number} id - ID do vínculo.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional do pool.
+ * @returns {Promise<boolean>} Retorna `true` se deletado com sucesso.
+ * @throws {Error} Caso ocorra erro na query.
+ */
+export const sairDoVinculo = async (usuario, vinculo_id, cx = null) => {
+    let localCx = cx;
+    try {
+
+        if (!localCx) {
+            localCx = await pool.getConnection();
+        }
+        const query = "DELETE FROM InstituicaoUsuario WHERE id = ? AND fk_usuario_id = ?;";
+    
+        const [result] = await localCx.execute(query, [vinculo_id, usuario]);
 
         if (result.affectedRows === 0) {
             throw new Error("Erro ao remover usuário da instituição.");

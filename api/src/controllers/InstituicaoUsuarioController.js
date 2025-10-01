@@ -49,6 +49,10 @@ export const cadastrar = async (req, res) => {
     const organizador = req.loginId;
     const { usuario, instituicao } = req.body;
 
+    console.log("Organizador ID:", organizador);
+    console.log("Usuário a ser vinculado ID:", usuario);
+    console.log("Instituição ID:", instituicao);
+
     if (!organizador || !usuario || !instituicao) {
       return responses.error(res, {
         statusCode: 400,
@@ -60,8 +64,8 @@ export const cadastrar = async (req, res) => {
     if (!instituicaoExistente) {
       return responses.notFound(res, { message: "Instituição não encontrada." });
     }
-
-    if (instituicaoExistente.organizador !== organizador) {
+    console.log("Instituição existente:", instituicaoExistente);
+    if (parseInt(instituicaoExistente.organizador) !== parseInt(organizador)) {
       return responses.error(res, {
         statusCode: 403,
         message: "Você não tem permissão para adicionar usuários a esta instituição.",
@@ -131,6 +135,22 @@ export const buscarPorId = async (req, res) => {
  * @param {import("express").Response} res - Objeto da resposta HTTP.
  * @returns {Promise<Object>} Retorna confirmação da remoção ou erro.
  */
+export const sairDoVinculo = async (req, res) => {
+  try {
+    const usuario_id = req.loginId;
+    const { vinculo_id } = req.body;
+
+    if (!vinculo_id) {
+      return responses.error(res, { statusCode: 400, message: "ID do vínculo é obrigatório." });
+    }
+
+    await InstituicaoUsuarioModel.sairDoVinculo(usuario_id, vinculo_id);
+    return responses.success(res, { message: "Vínculo removido com sucesso." });
+  } catch (error) {
+    return responses.error(res, { message: error.message });
+  }
+};
+
 export const deletar = async (req, res) => {
   try {
     const id = req.params.id;
@@ -155,7 +175,7 @@ export const deletar = async (req, res) => {
  */
 export const listarInstituicoesPorUsuario = async (req, res) => {
   try {
-    const usuario_id = req.params.usuario_id;
+    const usuario_id = req.loginId;
 
     if (!usuario_id) {
       return responses.error(res, { statusCode: 400, message: "ID do usuário é obrigatório." });

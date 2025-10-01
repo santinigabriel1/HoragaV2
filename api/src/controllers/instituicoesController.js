@@ -1,5 +1,6 @@
 import * as InstituicaoModel from "../models/InstituicoesModel.js";
 import * as responses from '../utils/responses.js';
+import * as InstituicaoUsuarioModel from "../models/InstituicaoUsuarioModel.js";
 
 /**
  * Cadastra uma nova instituição vinculada ao organizador logado.
@@ -26,6 +27,7 @@ export const cadastrar = async (req, res) => {
         const instituicao = { organizador, nome, descricao };
 
         const instituicaoCriada = await InstituicaoModel.cadastrar(instituicao);
+        InstituicaoUsuarioModel.cadastrar({instituicao: instituicaoCriada.id, usuario: organizador, aceito: true});
         return responses.created(res, {message: "Instituição cadastrada com sucesso", data: instituicaoCriada});
     } catch (error) {
         return responses.error(res, { message: error.message });
