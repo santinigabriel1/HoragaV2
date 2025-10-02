@@ -51,7 +51,7 @@ export const verificarVinculo = async (instituicao_usuario, cx = null) => {
  * @returns {Promise<Object|null>} O novo vínculo criado ou `null` se não inserido.
  * @throws {Error} Caso ocorra erro na execução da query.
  */
-export const solicitarCadastro  = async (instituicao_usuario, cx = null) => {
+export const solicitar  = async (instituicao_usuario, cx = null) => {
     let localCx = cx;
     try {
         if (!localCx) {
@@ -79,6 +79,88 @@ export const solicitarCadastro  = async (instituicao_usuario, cx = null) => {
         throw new Error("Erro: " + error.message);
     } finally {
         if (!cx && localCx) {
+            localCx.release();
+        }
+    }
+};
+
+/**
+ * Lista todas as instituições em que um usuário está vinculado.
+ *
+ * @async
+ * @function listarInstituicoesPorUsuario
+ * @param {number} usuario_id - ID do usuário.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional do pool.
+ * @returns {Promise<Object[]>} Lista de instituições vinculadas ao usuário.
+ * @throws {Error} Caso ocorra erro na query.
+ */
+export const listarInstituicoes = async (usuario_id, cx = null) => {
+    let localCx = cx;
+    try {
+        if (!localCx) {
+            localCx = await pool.getConnection();
+        }
+
+        const query = `
+            SELECT
+                Instituicoes.*, 
+                InstituicaoUsuario.id AS vinculo_id,
+                InstituicaoUsuario.aceito,  
+                InstituicaoUsuario.bloqueado
+            FROM 
+                InstituicaoUsuario
+            JOIN 
+                Instituicoes ON InstituicaoUsuario.fk_instituicao_id = Instituicoes.id
+            WHERE 
+                InstituicaoUsuario.fk_usuario_id = ?
+        `;
+        const values = [usuario_id];
+
+        const [rows] = await localCx.execute(query, values);
+
+        return rows;
+
+    } catch (error) {
+        throw new Error("Erro: " + error.message);
+    } finally {
+        if (!cx && localCx) {
+            localCx.release();
+        }
+    }
+};
+
+/**
+ * Sai do vínculo entre usuário e instituição.
+ *
+ * @async
+ * @function deletar
+ * @param {number} id - ID do vínculo.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional do pool.
+ * @returns {Promise<boolean>} Retorna `true` se deletado com sucesso.
+ * @throws {Error} Caso ocorra erro na query.
+ */
+export const sair = async (usuario, vinculo_id, cx = null) => {
+    let localCx = cx;
+    try {
+
+        if (!localCx) {
+            localCx = await pool.getConnection();
+        }
+        const query = "DELETE FROM InstituicaoUsuario WHERE id = ? AND fk_usuario_id = ?;";
+    
+        const [result] = await localCx.execute(query, [vinculo_id, usuario]);
+
+        if (result.affectedRows === 0) {
+            throw new Error("Erro ao remover usuário da instituição.");
+        } 
+
+        return true;
+
+    } catch (error) {
+        throw new Error("Erro: " + error.message);
+    } finally{
+        // Garante que a conexão será liberada de volta ao pool
+        if (!cx && localCx) { // só libera se a conexão foi criada aqui
             localCx.release();
         }
     }
@@ -124,6 +206,39 @@ export const cadastrar = async (instituicao_usuario, cx = null) => {
         throw new Error("Erro: " + error.message);
     } finally {
         if (!cx && localCx) {
+            localCx.release();
+        }
+    }
+};
+
+/**
+ * Busca um vínculo pelo ID.
+ *
+ * @async
+ * @function buscarPorId
+ * @param {number} id - ID do vínculo.
+ * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional do pool.
+ * @returns {Promise<Object|null>} Retorna o vínculo encontrado ou `null` se não existir.
+ * @throws {Error} Caso ocorra erro na query.
+ */
+export const buscarPorId = async (id, cx = null) => {
+    let localCx = cx;
+    try {
+        if (!localCx) {
+            localCx = await pool.getConnection();
+        }
+
+        const query = "SELECT * FROM InstituicaoUsuario WHERE id = ?";
+  
+        const [rows] = await localCx.execute(query, [id]);
+
+        return rows[0];
+
+    } catch (error) {
+        throw new Error("Erro: " + error.message);
+    } finally{
+        // Garante que a conexão será liberada de volta ao pool
+        if (!cx && localCx) { // só libera se a conexão foi criada aqui
             localCx.release();
         }
     }
@@ -182,39 +297,6 @@ export const atualizar = async (id, instituicao_usuario, cx = null) => {
 };
 
 /**
- * Busca um vínculo pelo ID.
- *
- * @async
- * @function buscarPorId
- * @param {number} id - ID do vínculo.
- * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional do pool.
- * @returns {Promise<Object|null>} Retorna o vínculo encontrado ou `null` se não existir.
- * @throws {Error} Caso ocorra erro na query.
- */
-export const buscarPorId = async (id, cx = null) => {
-    let localCx = cx;
-    try {
-        if (!localCx) {
-            localCx = await pool.getConnection();
-        }
-
-        const query = "SELECT * FROM InstituicaoUsuario WHERE id = ?";
-  
-        const [rows] = await localCx.execute(query, [id]);
-
-        return rows[0];
-
-    } catch (error) {
-        throw new Error("Erro: " + error.message);
-    } finally{
-        // Garante que a conexão será liberada de volta ao pool
-        if (!cx && localCx) { // só libera se a conexão foi criada aqui
-            localCx.release();
-        }
-    }
-};
-
-/**
  * Remove um vínculo entre usuário e instituição.
  *
  * @async
@@ -252,88 +334,6 @@ export const deletar = async (id, cx = null) => {
 };
 
 /**
- * Sai do vínculo entre usuário e instituição.
- *
- * @async
- * @function deletar
- * @param {number} id - ID do vínculo.
- * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional do pool.
- * @returns {Promise<boolean>} Retorna `true` se deletado com sucesso.
- * @throws {Error} Caso ocorra erro na query.
- */
-export const sairDoVinculo = async (usuario, vinculo_id, cx = null) => {
-    let localCx = cx;
-    try {
-
-        if (!localCx) {
-            localCx = await pool.getConnection();
-        }
-        const query = "DELETE FROM InstituicaoUsuario WHERE id = ? AND fk_usuario_id = ?;";
-    
-        const [result] = await localCx.execute(query, [vinculo_id, usuario]);
-
-        if (result.affectedRows === 0) {
-            throw new Error("Erro ao remover usuário da instituição.");
-        } 
-
-        return true;
-
-    } catch (error) {
-        throw new Error("Erro: " + error.message);
-    } finally{
-        // Garante que a conexão será liberada de volta ao pool
-        if (!cx && localCx) { // só libera se a conexão foi criada aqui
-            localCx.release();
-        }
-    }
-};
-
-/**
- * Lista todas as instituições em que um usuário está vinculado.
- *
- * @async
- * @function listarInstituicoesPorUsuario
- * @param {number} usuario_id - ID do usuário.
- * @param {import("mysql2/promise").PoolConnection} [cx=null] - Conexão opcional do pool.
- * @returns {Promise<Object[]>} Lista de instituições vinculadas ao usuário.
- * @throws {Error} Caso ocorra erro na query.
- */
-export const listarInstituicoesPorUsuario = async (usuario_id, cx = null) => {
-    let localCx = cx;
-    try {
-        if (!localCx) {
-            localCx = await pool.getConnection();
-        }
-
-        const query = `
-            SELECT
-                Instituicoes.*, 
-                InstituicaoUsuario.id AS vinculo_id,
-                InstituicaoUsuario.aceito,  
-                InstituicaoUsuario.bloqueado
-            FROM 
-                InstituicaoUsuario
-            JOIN 
-                Instituicoes ON InstituicaoUsuario.fk_instituicao_id = Instituicoes.id
-            WHERE 
-                InstituicaoUsuario.fk_usuario_id = ?
-        `;
-        const values = [usuario_id];
-
-        const [rows] = await localCx.execute(query, values);
-
-        return rows;
-
-    } catch (error) {
-        throw new Error("Erro: " + error.message);
-    } finally {
-        if (!cx && localCx) {
-            localCx.release();
-        }
-    }
-};
-
-/**
  * Lista todos os usuários vinculados a uma instituição.
  *
  * @async
@@ -343,7 +343,7 @@ export const listarInstituicoesPorUsuario = async (usuario_id, cx = null) => {
  * @returns {Promise<Object[]>} Lista de usuários vinculados à instituição.
  * @throws {Error} Caso ocorra erro na query.
  */
-export const listarUsuariosPorInstituicao = async (instituicao_id, cx = null) => {
+export const listarUsuarios = async (instituicao_id, cx = null) => {
     let localCx = cx;
     try {
         if (!localCx) {

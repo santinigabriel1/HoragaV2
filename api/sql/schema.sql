@@ -5,6 +5,7 @@ DROP TABLE IF EXISTS inst_user; -- IGNORE
 DROP TABLE IF EXISTS InstituicaoUsuario;
 DROP TABLE IF EXISTS Agendamentos;
 DROP TABLE IF EXISTS Salas;
+DROP TABLE IF EXISTS Horarios;
 DROP TABLE IF EXISTS Instituicoes;
 DROP TABLE IF EXISTS Sessoes;
 DROP TABLE IF EXISTS Token;
@@ -77,6 +78,15 @@ CREATE TABLE Sessoes (
   PRIMARY KEY (usuario)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE Horarios (
+    id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
+    fk_instituicao_id BIGINT unsigned NOT NULL,
+    descricao VARCHAR(255) NOT NULL,
+    horario JSON NOT NULL,
+    createdAt datetime DEFAULT CURRENT_TIMESTAMP,
+    updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 ALTER TABLE Instituicoes ADD CONSTRAINT fk_organizador
     FOREIGN KEY (organizador)
     REFERENCES Usuarios (id) ON DELETE SET NULL;
@@ -103,3 +113,7 @@ ALTER TABLE Agendamentos ADD CONSTRAINT FK_Agendamentos_Salas
 ALTER TABLE Sessoes ADD CONSTRAINT FK_Sessoes_Usuarios
     FOREIGN KEY (usuario)
     REFERENCES Usuarios (id) ON DELETE CASCADE; 
+
+ALTER TABLE Horarios ADD CONSTRAINT FK_Horarios_Instituicoes
+    FOREIGN KEY (fk_instituicao_id)
+    REFERENCES Instituicoes (id) ON DELETE CASCADE;

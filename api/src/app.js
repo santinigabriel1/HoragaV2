@@ -3,7 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import usuarioRoutes from './routes/usuarioRoutes.js';
 import instituicoesRoutes from './routes/instituicoesRoutes.js';
-import instituicaoUsuarioRoutes from './routes/InstituicaoUsuarioRoutes.js';
+import instituicaoUsuarioRoutes from './routes/instituicaoUsuarioRoutes.js';
+import horariosRoutes from './routes/horariosRoutes.js';
 dotenv.config();
 
 
