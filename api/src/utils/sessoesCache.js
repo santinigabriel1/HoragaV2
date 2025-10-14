@@ -31,13 +31,13 @@ export function buscarSessao(usuario, token) {
 // Função para limpar sessões expiradas
 function limparSessoes() {
   const agora = Date.now();
-  const umaHora = 60 * 60 * 1000; // 1 hora em ms
+  const umaHora = 360 * 1000; // 1 hora em milissegundos
 
   sessoes = sessoes.filter(session => (agora - session.criadoEm) < umaHora);
 
   console.log(`[CLEANUP] Sessões ativas: ${sessoes.length}`);
 }
 
-// Configura execução automática a cada 1h
-setInterval(limparSessoes, 60 * 60 * 1000); // 1h
+// Configura o intervalo para limpar sessões a cada 1 hora
+setInterval(limparSessoes, 360 * 1000); 
 

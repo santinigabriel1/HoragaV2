@@ -75,6 +75,7 @@ CREATE TABLE Sessoes (
   usuario BIGINT unsigned NOT NULL,
   `token` varchar(255) DEFAULT NULL,
   validade datetime DEFAULT NULL,
+  createdAt datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (usuario)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

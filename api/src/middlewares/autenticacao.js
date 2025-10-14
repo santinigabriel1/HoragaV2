@@ -3,6 +3,7 @@ import * as sessoesCache from '../utils/sessoesCache.js';
 import * as responses from '../utils/responses.js'
 
 export default async function autenticar(req, res, next) {
+    console.log("hora atual: "+new Date().toISOString());
     try {        
         const authorizationHeader = req.headers['authorization'];
         
