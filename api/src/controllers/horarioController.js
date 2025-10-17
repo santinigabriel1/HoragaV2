@@ -1,6 +1,13 @@
 import * as HorarioModel from '../models/HorarioModel.js';
 import * as responses from '../utils/responses.js';
 
+/**
+ * Cadastra um novo esquema de horários para uma instituição.
+ *
+ * @param {import("express").Request} req - Objeto da requisição contendo `loginId`, `nome` e `descricao`.
+ * @param {import("express").Response} res - Objeto da resposta HTTP.
+ * @returns {Promise<Object>} Retorna a instituição cadastrada ou um erro.
+ */
 export const cadastrar = async (req, res) => {
     try {
         const { fk_instituicao_id, descricao, horario } = req.body;
@@ -21,6 +28,14 @@ export const cadastrar = async (req, res) => {
         return responses.error(res, { message: error.message });
     }
 };
+
+/**
+ * Busca um horário pelo seu ID.
+ *
+ * @param {import("express").Request} req - Objeto da requisição contendo o parâmetro `id`.
+ * @param {import("express").Response} res - Objeto da resposta HTTP.
+ * @returns {Promise<Object>} Retorna o horário encontrado ou erro 404 se não existir.
+ */
 
 export const buscarPorId = async (req, res) => {
     try {
@@ -46,6 +61,14 @@ export const buscarPorId = async (req, res) => {
     }
 }; 
 
+/**
+ * Lista todos os horários com opção de busca por nome ou descrição.
+ *
+ * @param {import("express").Request} req - Objeto da requisição contendo query `search`.
+ * @param {import("express").Response} res - Objeto da resposta HTTP.
+ * @returns {Promise<Object[]>} Retorna a lista de horários encontrados ou erro 404 se nenhuma for encontrada.
+ */
+
 export const listar = async (req, res) => {
     try {
         const search = req.query.search || "";
@@ -61,7 +84,45 @@ export const listar = async (req, res) => {
     }
 };
 
-// Assumindo que 'responses' e 'HorarioModel' foram importados corretamente
+/**
+ * Lista todos os horários de uma instituição específica.
+ *
+ * @param {import("express").Request} req - Objeto da requisição contendo query `search`.
+ * @param {import("express").Response} res - Objeto da resposta HTTP.
+ * @returns {Promise<Object[]>} Retorna a lista de horários encontradas ou erro 404 se nenhuma for encontrada.
+ */
+
+export const listarPorInstituicao = async (req, res) => {
+    try {
+        const instituicaoId = req.params.instituicaoId;
+
+        if (!instituicaoId) {
+            return responses.error(res, { statusCode: 400, message: "ID da instituição é obrigatório" });
+        }
+
+        if (!Number(instituicaoId)) {
+            return responses.error(res, { statusCode: 400, message: "ID da instituição deve ser um número válido" });
+        }
+
+        const horarios = await HorarioModel.listarPorInstituicao(instituicaoId);
+
+        if (!horarios || horarios.length === 0) {
+            return responses.error(res, { statusCode: 404, message: "Nenhum horário encontrado." });
+        }
+
+        return responses.success(res, { message: "Horários listados com sucesso.", data: horarios });
+    } catch (error) {
+        return responses.error(res, { message: error.message });
+    }
+};
+
+/**
+ * Atualiza parcialmente os campos de um horário.
+ *
+ * @param {import("express").Request} req - Objeto da requisição contendo `loginId`, parâmetro `id` e body com pelo menos um campo (`nome` ou `descricao`).
+ * @param {import("express").Response} res - Objeto da resposta HTTP.
+ * @returns {Promise<Object>} Retorna confirmação de exclusão ou erro 404 se nenhuma for encontrada.
+ */
 
 export const atualizar = async (req, res) => {
     try {
@@ -120,6 +181,14 @@ export const atualizar = async (req, res) => {
         return responses.error(res, { message: errorMessage });
     }
 };
+
+/**
+ * Deleta um horário pelo ID, apenas se pertencer ao organizador logado.
+ *
+ * @param {import("express").Request} req - Objeto da requisição contendo `loginId` e parâmetro `id`.
+ * @param {import("express").Response} res - Objeto da resposta HTTP.
+ * @returns {Promise<Object>} Retorna confirmação de exclusão ou erro 404 se nenhuma for encontrada.
+ */
 
 export const deletar = async (req, res) => {
     try {

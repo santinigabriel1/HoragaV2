@@ -27,8 +27,7 @@ CREATE TABLE Salas (
     id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
     fk_instituicao_id BIGINT unsigned NOT NULL,
     nome VARCHAR(250) NOT NULL,
-    capacidade INT,
-    horario JSON,
+    descricao VARCHAR(250),
     createdAt datetime DEFAULT CURRENT_TIMESTAMP,
     updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP     
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

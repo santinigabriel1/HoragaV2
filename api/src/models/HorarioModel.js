@@ -61,6 +61,15 @@ export const cadastrar = async (esquemaHorario, cx = null) => {
     }
 };
 
+/**
+ * Busca um esquema de horários pelo ID.
+ *
+ * @param {number} id - ID do esquema de horários.
+ * @param {object} [cx=null] - Conexão de banco de dados opcional para transações.
+ * @returns {object|null} O esquema de horários encontrado ou null se não existir.
+ * @throws {Error} Se houver erro na conexão ou consulta.
+ */
+
 export const buscarPorId = async (id, cx = null) => {
     let localCx = cx;
     try {
@@ -86,6 +95,14 @@ export const buscarPorId = async (id, cx = null) => {
     }   
 };
 
+/** * Lista todos os esquemas de horários, ou filtra por ID se fornecido.
+ *
+ * @param {number} [id=null] - ID do esquema de horários para filtrar (opcional).
+ * @param {object} [cx=null] - Conexão de banco de dados opcional para transações.
+ * @returns {Array} Lista de esquemas de horários encontrados.
+ * @throws {Error} Se houver erro na conexão ou consulta.
+ */
+
 export const listar = async (id, cx = null) => { 
     let localCx = cx;
     try {
@@ -108,7 +125,47 @@ export const listar = async (id, cx = null) => {
     }   
 };
 
-// Assumindo que 'pool' e 'buscarPorId' estão importados/definidos corretamente
+/**
+ * Lista todos os esquemas de horários, ou filtra por ID se fornecido.
+ *
+ * @param {number} [id=null] - ID do esquema de horários para filtrar (opcional).
+ * @param {object} [cx=null] - Conexão de banco de dados opcional para transações.
+ * @returns {Array} Lista de esquemas de horários encontrados.
+ * @throws {Error} Se houver erro na conexão ou consulta.
+ */
+
+export const listarPorInstituicao = async (instituicaoId, cx = null) => {
+    let localCx = cx;
+    try {
+        if (!localCx) {
+            localCx = await pool.getConnection();
+        }
+
+        const query = "SELECT * FROM Horarios WHERE fk_instituicao_id = ?";
+        const [rows] = await localCx.execute(query, [instituicaoId]);
+
+        if (rows.length === 0) {
+            return null;
+        }
+
+        return rows;
+    } catch (error) {
+        throw new Error("Erro ao listar Horários por Instituição: " + error.message);
+    } finally {
+        if (!cx && localCx) {
+            localCx.release();
+        }
+    }
+};
+
+/**
+ * Atualiza um esquema de horários pelo ID.
+ *
+ * @param {*} id - ID do esquema de horários.
+ * @param {*} dados - Dados a serem atualizados.
+ * @param {*} cx - Conexão de banco de dados opcional para transações.
+ * @returns {Promise<Object|null>} O esquema de horários atualizado ou null se não existir.
+ */
 
 export const atualizar = async (id, dados, cx = null) => {
     let localCx = cx;
@@ -160,6 +217,14 @@ export const atualizar = async (id, dados, cx = null) => {
         }
     }
 };
+
+/** * Deleta um esquema de horários pelo ID.
+ *
+ * @param {number} id - ID do esquema de horários a ser deletado.
+ * @param {object} [cx=null] - Conexão de banco de dados opcional para transações.
+ * @returns {boolean} Retorna true se o esquema foi deletado com sucesso.
+ * @throws {Error} Se houver erro na conexão ou exclusão.
+ */
 
 export const deletar = async (id, cx = null) => { 
     let localCx = cx;

@@ -4,10 +4,11 @@ import express from 'express';
 
 const router = express.Router();
 
-router.post('/horario',       autenticar, horarioController.cadastrar);
-router.get('/horario/:id',    autenticar, horarioController.buscarPorId);
-router.get('/horarios',       autenticar, horarioController.listar);
-router.patch('/horario/:id',  autenticar, horarioController.atualizar);
-router.delete('/horario/:id', autenticar, horarioController.deletar);
+router.post('/horario',                             autenticar, horarioController.cadastrar);
+router.get('/horario/:id',                          autenticar, horarioController.buscarPorId);
+router.get('/horarios',                             autenticar, horarioController.listar);
+router.get('/horarios/instituicao/:instituicaoId',  autenticar, horarioController.listarPorInstituicao);
+router.patch('/horario/:id',                        autenticar, horarioController.atualizar);
+router.delete('/horario/:id',                       autenticar, horarioController.deletar);
 
 export default router;
