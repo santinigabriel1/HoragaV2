@@ -46,7 +46,7 @@ export default {
 
     const handleLogin = () => {
       if (email.value === 'admin@admin' && password.value === 'admin') {
-        router.push('/home')
+        router.push('/app') // ✅ Alterado para /app (rota do Layout)
       } else {
         alert('E-mail ou senha inválidos!')
       }
