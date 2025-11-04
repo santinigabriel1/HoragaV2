@@ -1,12 +1,5 @@
 import pool from "../database/data.js";
 
-// cadastrar
-// listar
-// listarPorSala
-// listarPorUsuario
-// atualizar
-// deletar
-
 /**
  * Cadastra um novo agendamento no banco de dados.
  *

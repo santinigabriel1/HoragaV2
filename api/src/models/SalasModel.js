@@ -201,6 +201,31 @@ export const atualizar = async (id, salas, cx = null) => {
     }
 };
 
+export const adicionarHorarioFuncionamento = async (id, horarioId, cx = null) => {
+    let localCx = cx;
+    try {
+        if (!localCx) {
+            // Se não houver transação, obtém uma nova conexão
+            localCx = await pool.getConnection(); 
+        }
+
+        const sql = `UPDATE Salas SET horario_funcionamento = JSON_ARRAY_APPEND(horario_funcionamento, '$', ?) WHERE id = ?`;
+
+        // Retorna a sala atualizada buscando-a no banco de dados
+        const updatedSala = await buscarPorId(id, localCx);
+        return updatedSala;
+
+    } catch (error) {
+        // Lança o erro com uma mensagem útil, que será capturada pela controller
+        throw new Error("Erro ao atualizar Sala: " + error.message);
+    } finally {
+        if (!cx && localCx) {
+            // Libera a conexão se ela foi obtida dentro desta função
+            localCx.release();
+        }
+    }
+};
+
 /** * Deleta uma sala pelo ID.
  *
  * @param {number} id - ID da sala a ser deletada.

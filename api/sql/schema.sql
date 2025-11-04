@@ -28,6 +28,7 @@ CREATE TABLE Salas (
     fk_instituicao_id BIGINT unsigned NOT NULL,
     nome VARCHAR(250) NOT NULL,
     descricao VARCHAR(250),
+    horario_funcionamento JSON,
     createdAt datetime DEFAULT CURRENT_TIMESTAMP,
     updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP     
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
