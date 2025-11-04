@@ -1,33 +1,30 @@
 USE agendamento;
 
--- Instituições
+-- 1. Instituições (Não depende de nada)
 INSERT INTO Instituicoes (nome, descricao) VALUES
 ('Etec Tietê', 'Instituição de ensino técnico'),
 ('Fatec Tatuí', 'Instituição de ensino superior');
 
--- Usuários
+-- 2. Usuários (Não depende de nada)
 INSERT INTO Usuarios (nome, email, senha, cargo) VALUES
 ('Admin', 'admin@gmail.com', '$2b$10$afbzMqlv1VvmDhsq.rKa0OgGu8H.BCM30iBE2uKD40Vn4iYSn8ydO', 'Administrador'),
 ('Maria Silva', 'maria@gmail.com', '$2b$10$afbzMqlv1VvmDhsq.rKa0OgGu8H.BCM30iBE2uKD40Vn4iYSn8ydO', 'Professor'),
 ('Joao Souza', 'joao@gmail.com', '$2b$10$afbzMqlv1VvmDhsq.rKa0OgGu8H.BCM30iBE2uKD40Vn4iYSn8ydO', 'Aluno');
 
--- Relacionamento usuário-instituição
+-- 3. Relacionamento usuário-instituição (Depende de Instituicoes e Usuarios)
 INSERT INTO InstituicaoUsuario (fk_instituicao_id, fk_usuario_id) VALUES
 (1, 1),
 (1, 2),
 (2, 3);
 
--- Salas
+-- 4. Salas (Depende de Instituicoes)
 INSERT INTO Salas (fk_instituicao_id, nome, descricao) VALUES
 (1, 'Laboratório 1', 'Laboratório de informática'),
 (1, 'Auditório', 'Auditório principal da instituição'),
 (2, 'Sala 201', 'Sala de reuniões da instituição');
 
--- Agendamentos
-INSERT INTO Agendamentos (fk_usuario_id, fk_salas_id, titulo, descricao, data, horarios) VALUES
-(2, 1, 'Aula de Banco de Dados', 'Introdução ao MySQL', '2025-09-10', JSON_ARRAY('08:00-10:00','09:00-10:00')),
-(3, 3, 'Estudo em grupo', 'Preparação para prova', '2025-09-11', JSON_ARRAY('09:00-11:00'));
-
+-- 5. Horarios (Depende de Instituicoes) 
+-- (MOVIDO PARA CIMA)
 INSERT INTO Horarios (fk_instituicao_id, descricao, horario) VALUES
 (
     1,
@@ -43,4 +40,30 @@ INSERT INTO Horarios (fk_instituicao_id, descricao, horario) VALUES
             {"inicio":"20:00", "fim":"22:00", "disponivel": true}
         ]
     }'
+);
+
+-- 6. Agendamentos (Depende de Usuarios, Horarios e Salas)
+-- (MOVIDO PARA O FIM)
+INSERT INTO Agendamentos (fk_usuario_id, fk_horario_id, fk_salas_id, data_agendamento, hora_inicio, hora_fim, proposito, status, fk_organizador_id) VALUES 
+(
+    1, -- fk_usuario_id (Admin)
+    1, -- fk_horario_id (horário padrão)
+    1, -- fk_salas_id (Laboratório 1)
+    '2025-11-10', -- data_agendamento
+    '08:00:00', -- hora_inicio
+    '09:00:00', -- hora_fim
+    'Aula de Banco de Dados', -- proposito
+    'PENDENTE', -- status
+    NULL -- fk_organizador_id
+),
+(
+    2, -- fk_usuario_id (Maria Silva)
+    1, -- fk_horario_id (horário padrão)
+    2, -- fk_salas_id (Auditório)
+    '2025-11-12', -- data_agendamento
+    '10:15:00', -- hora_inicio
+    '12:15:00', -- hora_fim
+    'Palestra de Boas-vindas', -- proposito
+    'CONFIRMADO', -- status
+    1 -- fk_organizador_id (Admin aprovou)
 );
