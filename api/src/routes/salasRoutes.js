@@ -9,6 +9,7 @@ router.get('/sala/:id',                         autenticar, salasController.busc
 router.get('/salas',                            autenticar, salasController.listar);
 router.get('/salas/instituicao/:instituicaoId', autenticar, salasController.listarPorInstituicao);
 router.patch('/sala/:id',                       autenticar, salasController.atualizar);
+router.patch('/sala/copiar_horario',            autenticar, salasController.copiarHorario);
 router.delete('/sala/:id',                      autenticar, salasController.deletar);
 
 export default router;

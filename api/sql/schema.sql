@@ -33,6 +33,15 @@ CREATE TABLE Salas (
     updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP     
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE Horarios (
+    id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
+    fk_instituicao_id BIGINT unsigned NOT NULL,
+    descricao VARCHAR(255) NOT NULL,
+    horario JSON NOT NULL,
+    createdAt datetime DEFAULT CURRENT_TIMESTAMP,
+    updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- Criação da tabela de usuários
 CREATE TABLE Usuarios (
     id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
@@ -82,14 +91,6 @@ CREATE TABLE Sessoes (
   PRIMARY KEY (usuario)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE Horarios (
-    id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
-    fk_instituicao_id BIGINT unsigned NOT NULL,
-    descricao VARCHAR(255) NOT NULL,
-    horario JSON NOT NULL,
-    createdAt datetime DEFAULT CURRENT_TIMESTAMP,
-    updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 ALTER TABLE Instituicoes ADD CONSTRAINT fk_organizador
     FOREIGN KEY (organizador)

@@ -201,7 +201,7 @@ export const atualizar = async (id, salas, cx = null) => {
     }
 };
 
-export const adicionarHorarioFuncionamento = async (id, horarioId, cx = null) => {
+export const manipularHorarios = async (id, horarios = {}, cx = null) => {
     let localCx = cx;
     try {
         if (!localCx) {
@@ -209,7 +209,9 @@ export const adicionarHorarioFuncionamento = async (id, horarioId, cx = null) =>
             localCx = await pool.getConnection(); 
         }
 
-        const sql = `UPDATE Salas SET horario_funcionamento = JSON_ARRAY_APPEND(horario_funcionamento, '$', ?) WHERE id = ?`;
+        const query = `UPDATE Salas SET horario_funcionamento = ? WHERE id = ?`;
+
+        const [result] = await localCx.execute(query, [horarios, id]);
 
         // Retorna a sala atualizada buscando-a no banco de dados
         const updatedSala = await buscarPorId(id, localCx);

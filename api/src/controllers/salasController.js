@@ -1,4 +1,5 @@
 import * as SalasModel from "../models/SalasModel.js";
+import * as HorarioModel from "../models/HorarioModel.js";
 import * as responses from "../utils/responses.js";
 
 export const cadastrar = async (req, res) => {
@@ -107,6 +108,36 @@ export const atualizar = async (req, res) => {
     }
 
     return responses.success(res, { message: "Sala atualizada com sucesso", data: resultado });
+
+  } catch (error) {
+    return responses.error(res, { message: error.message });
+  }
+};
+
+
+export const copiarHorario = async (req, res) => {
+  try {
+    const id_sala = req.body.id_sala;
+    const id_horario = req.body.id_horario;
+    
+
+    if (!id_horario) {
+      return responses.error(res, { statusCode: 400, message: "ID do horário é obrigatório" });
+    }
+
+    if (!Number(id_horario)) {
+      return responses.error(res, { statusCode: 400, message: "ID do horátio deve ser um número válido" });
+    }
+   
+    const hosrio = await HorarioModel.buscarPorId(id_horario);
+
+    const resultado = await SalasModel.manipularHorarios(id_sala, hosrio.horario);
+
+    if (!resultado) {
+      return responses.notFound(res, { message: "Sala não encontrada" });
+    }
+
+    return responses.success(res, { message: "Horário da sala atualizada com sucesso", data: resultado });
 
   } catch (error) {
     return responses.error(res, { message: error.message });
