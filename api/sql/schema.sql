@@ -70,14 +70,12 @@ CREATE TABLE InstituicaoUsuario (
 CREATE TABLE Agendamentos (
     id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
     fk_usuario_id BIGINT unsigned NOT NULL,
-    fk_horario_id BIGINT unsigned NOT NULL,
     fk_salas_id BIGINT unsigned NOT NULL,
     data_agendamento DATE NOT NULL,
-    hora_inicio TIME NOT NULL,
-    hora_fim TIME NOT NULL,
+    horarios JSON NOT NULL,
     proposito TEXT,
-    status ENUM('PENDENTE', 'CONFIRMADO', 'CANCELADO') DEFAULT 'PENDENTE',
-    fk_organizador_id BIGINT unsigned DEFAULT NULL, 
+    status ENUM('CONFIRMADO', 'CANCELADO') DEFAULT 'CONFIRMADO',
+    comentario VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
     createdAt datetime DEFAULT CURRENT_TIMESTAMP,
     updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -121,17 +119,7 @@ ALTER TABLE Agendamentos ADD CONSTRAINT FK_Agendamentos_Usuarios
     FOREIGN KEY (fk_usuario_id)
     REFERENCES Usuarios (id) ON DELETE CASCADE;
 
--- Regra: Se o Horário (molde de horário) for deletado, os agendamentos baseados nele são deletados.
-ALTER TABLE Agendamentos ADD CONSTRAINT FK_Agendamentos_Horarios
-    FOREIGN KEY (fk_horario_id)
-    REFERENCES Horarios (id) ON DELETE CASCADE;
-
 -- Regra: Se a Sala for deletada, seus agendamentos são deletados.
 ALTER TABLE Agendamentos ADD CONSTRAINT FK_Agendamentos_Salas
     FOREIGN KEY (fk_salas_id)
     REFERENCES Salas (id) ON DELETE CASCADE;
-
--- Regra: Se o Usuário (Organizador que aprovou) for deletado, o agendamento permanece, mas o ID dele é removido.
-ALTER TABLE Agendamentos ADD CONSTRAINT FK_Agendamentos_Organizador
-    FOREIGN KEY (fk_organizador_id)
-    REFERENCES Usuarios (id) ON DELETE SET NULL;

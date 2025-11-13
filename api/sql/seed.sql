@@ -29,41 +29,94 @@ INSERT INTO Horarios (fk_instituicao_id, descricao, horario) VALUES
 (
     1,
     'horário padrão',
-    '{
-        "segunda": [
-            {"inicio":"08:00", "fim":"09:00", "disponivel": true},
-            {"inicio":"09:00", "fim":"10:00", "disponivel": true},
-            {"inicio":"10:15", "fim":"12:15", "disponivel": true},
-            {"inicio":"14:00", "fim":"16:00", "disponivel": true},
-            {"inicio":"18:00", "fim":"20:00", "disponivel": true},
-            {"inicio":"19:00", "fim":"21:00", "disponivel": true},
-            {"inicio":"20:00", "fim":"22:00", "disponivel": true}
-        ]
-    }'
+    '[
+            {
+                "dia": "domingo",
+                "horarios": []
+            },
+            {
+                "dia": "segunda-feira",
+                "horarios": [
+                    {"inicio":"08:00", "fim":"09:00", "disponivel": true},
+                    {"inicio":"09:00", "fim":"10:00", "disponivel": true},
+                    {"inicio":"10:15", "fim":"12:15", "disponivel": true},
+                    {"inicio":"14:00", "fim":"16:00", "disponivel": true},
+                    {"inicio":"18:00", "fim":"20:00", "disponivel": true},
+                    {"inicio":"19:00", "fim":"21:00", "disponivel": true},
+                    {"inicio":"20:00", "fim":"22:00", "disponivel": true}
+                ]       
+            },
+            {
+                "dia": "terça-feira",
+                "horarios": [
+                    {"inicio":"08:00", "fim":"09:00", "disponivel": true},
+                    {"inicio":"09:00", "fim":"10:00", "disponivel": true},
+                    {"inicio":"10:15", "fim":"12:15", "disponivel": true},
+                    {"inicio":"14:00", "fim":"16:00", "disponivel": true},
+                    {"inicio":"18:00", "fim":"20:00", "disponivel": true},
+                    {"inicio":"19:00", "fim":"21:00", "disponivel": true},
+                    {"inicio":"20:00", "fim":"22:00", "disponivel": true}
+                ]       
+            },
+            {
+                "dia": "quarta-feira",
+                "horarios": [
+                    {"inicio":"08:00", "fim":"09:00", "disponivel": true},
+                    {"inicio":"09:00", "fim":"10:00", "disponivel": true},
+                    {"inicio":"10:15", "fim":"12:15", "disponivel": true},
+                    {"inicio":"14:00", "fim":"16:00", "disponivel": true},
+                    {"inicio":"18:00", "fim":"20:00", "disponivel": true},
+                    {"inicio":"19:00", "fim":"21:00", "disponivel": true},
+                    {"inicio":"20:00", "fim":"22:00", "disponivel": true}
+                ]       
+            },
+            {
+                "dia": "quinta-feira",
+                "horarios": [
+                    {"inicio":"08:00", "fim":"09:00", "disponivel": true},
+                    {"inicio":"09:00", "fim":"10:00", "disponivel": true},
+                    {"inicio":"10:15", "fim":"12:15", "disponivel": true},
+                    {"inicio":"14:00", "fim":"16:00", "disponivel": true},
+                    {"inicio":"18:00", "fim":"20:00", "disponivel": true},
+                    {"inicio":"19:00", "fim":"21:00", "disponivel": true},
+                    {"inicio":"20:00", "fim":"22:00", "disponivel": true}
+                ]       
+            },
+            {
+                "dia": "sexta-feira",
+                "horarios": [
+                    {"inicio":"08:00", "fim":"09:00", "disponivel": true},
+                    {"inicio":"09:00", "fim":"10:00", "disponivel": true},
+                    {"inicio":"10:15", "fim":"12:15", "disponivel": true},
+                    {"inicio":"14:00", "fim":"16:00", "disponivel": true},
+                    {"inicio":"18:00", "fim":"20:00", "disponivel": true},
+                    {"inicio":"19:00", "fim":"21:00", "disponivel": true},
+                    {"inicio":"20:00", "fim":"22:00", "disponivel": true}
+                ]       
+            },
+            {
+                "dia": "sábado",
+                "horarios": []
+            }
+            
+        ]'
 );
 
--- 6. Agendamentos (Depende de Usuarios, Horarios e Salas)
--- (MOVIDO PARA O FIM)
-INSERT INTO Agendamentos (fk_usuario_id, fk_horario_id, fk_salas_id, data_agendamento, hora_inicio, hora_fim, proposito, status, fk_organizador_id) VALUES 
+INSERT INTO Agendamentos (fk_usuario_id, fk_salas_id, data_agendamento, horarios, proposito) VALUES 
 (
     1, -- fk_usuario_id (Admin)
-    1, -- fk_horario_id (horário padrão)
     1, -- fk_salas_id (Laboratório 1)
     '2025-11-10', -- data_agendamento
-    '08:00:00', -- hora_inicio
-    '09:00:00', -- hora_fim
-    'Aula de Banco de Dados', -- proposito
-    'PENDENTE', -- status
-    NULL -- fk_organizador_id
+    '[
+        {"inicio": "08:00:00", "fim": "09:00:00"},
+        {"inicio": "09:00:00", "fim": "10:00:00"}
+    ]', -- horarios (JSON)
+    'Aula de Banco de Dados'
 ),
 (
     2, -- fk_usuario_id (Maria Silva)
-    1, -- fk_horario_id (horário padrão)
     2, -- fk_salas_id (Auditório)
     '2025-11-12', -- data_agendamento
-    '10:15:00', -- hora_inicio
-    '12:15:00', -- hora_fim
-    'Palestra de Boas-vindas', -- proposito
-    'CONFIRMADO', -- status
-    1 -- fk_organizador_id (Admin aprovou)
+    '[{"inicio": "10:15:00", "fim": "12:15:00"}]', -- horarios (JSON)
+    'Palestra de Boas-vindas'
 );

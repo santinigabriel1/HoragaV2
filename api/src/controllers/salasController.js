@@ -114,7 +114,6 @@ export const atualizar = async (req, res) => {
   }
 };
 
-
 export const copiarHorario = async (req, res) => {
   try {
     const id_sala = req.body.id_sala;
@@ -141,6 +140,53 @@ export const copiarHorario = async (req, res) => {
 
   } catch (error) {
     return responses.error(res, { message: error.message });
+  }
+};
+
+export const limparHorario = async (req, res) => {
+  try {
+    const id_sala = req.body.id_sala;
+
+    const resultado = await SalasModel.manipularHorarios(id_sala, null);
+
+    if (!resultado) {
+      return responses.notFound(res, { message: "Sala não encontrada" });
+    }
+
+    return responses.success(res, { message: "Horário da sala atualizada com sucesso", data: resultado });
+
+  } catch (error) {
+    return responses.error(res, { message: error.message });
+  }
+};
+
+export const editarHorario = async (req, res) => {
+  try {
+    const id_sala = req.params.id;
+    const horarios = req.body;
+
+    if (!id_sala) {
+      return responses.error(res, { statusCode: 400, message: "ID da sala é obrigatório" });
+    }
+
+    if (!Number(id_sala)) {
+      return responses.error(res, { statusCode: 400, message: "ID da sala deve ser um número válido" });
+    }
+
+    if (!horarios) {
+      return responses.error(res, { statusCode: 400, message: "Horários são obrigatórios" });
+    }
+
+    const resultado = await SalasModel.manipularHorarios(id_sala, horarios);
+
+    if (!resultado) {
+      return responses.notFound(res, { message: "Sala não encontrada" });
+    }
+
+    return responses.success(res, { message: "Horário da sala atualizado com sucesso", data: resultado });
+
+  } catch (error) {
+    return responses.error(res, { message: error.message });  
   }
 };
 

@@ -9,7 +9,9 @@ router.get('/sala/:id',                         autenticar, salasController.busc
 router.get('/salas',                            autenticar, salasController.listar);
 router.get('/salas/instituicao/:instituicaoId', autenticar, salasController.listarPorInstituicao);
 router.patch('/sala/:id',                       autenticar, salasController.atualizar);
-router.patch('/sala/copiar_horario',            autenticar, salasController.copiarHorario);
+router.post('/sala/copiar_horario/',            autenticar, salasController.copiarHorario);
+router.post('/sala/limpar_horario/',            autenticar, salasController.limparHorario);
+router.post('/sala/editar_horario/:id',         autenticar, salasController.editarHorario);
 router.delete('/sala/:id',                      autenticar, salasController.deletar);
 
 export default router;
