@@ -120,3 +120,9 @@ INSERT INTO Agendamentos (fk_usuario_id, fk_salas_id, data_agendamento, horarios
     '[{"inicio": "10:15:00", "fim": "12:15:00"}]', -- horarios (JSON)
     'Palestra de Boas-vindas'
 );
+
+
+UPDATE Salas
+JOIN Horarios ON Horarios.id = 1
+SET Salas.horario_funcionamento = Horarios.horario
+WHERE Salas.id in (1,2,3);

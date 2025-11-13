@@ -1,4 +1,5 @@
 import pool from "../database/data.js";
+import * as salaModel from "./SalasModel.js";
 
 export const cadastrar = async (dadosAgendamento, cx = null) => {
     let localCx = cx;
@@ -69,7 +70,7 @@ export const buscarPorId = async (id, cx) => {
     }
 };
 
-export const listarPorData = async (data_agendamento, cx = null) => {
+export const listarPorData = async (fk_salas_id, data_agendamento, cx = null) => {
     let localCx = cx;
     try {
         if (!localCx) {
@@ -77,9 +78,9 @@ export const listarPorData = async (data_agendamento, cx = null) => {
         }
 
         const query = `
-            SELECT * FROM Agendamentos WHERE data_agendamento = ?
+            SELECT * FROM Agendamentos WHERE fk_salas_id = ? AND data_agendamento = ?
         `;
-        const [rows] = await localCx.execute(query, [data_agendamento]);
+        const [rows] = await localCx.execute(query, [fk_salas_id, data_agendamento]);
         return rows;
 
     } catch (error) {
@@ -149,8 +150,28 @@ export const verificarDisponibilidade = async (fk_salas_id, data_agendamento, cx
         if (!isDateValida(data_agendamento)) {
             throw new Error("Data de agendamento inválida.");
         }
+
+        // Obtem o index do dia da semana, exemplo: 0 => Domingo
         const index_day = data_agendamento.getDay();
 
+        const sala = await salaModel.buscarPorId(fk_salas_id);
+        // Verifica se a sala existe
+        if(!sala){
+            throw new Error("Sala não encontrada.");
+        }
+        // Pega os horários de funcionamento de todos os dias;
+        // --> Uma array json de 0 a 6 que representa dotos os dias da semana;
+        const horarios = sala.horario_funcionamento;
+        //Obtem o horario do dia escolhido, pelo index_day
+        const horario_do_dia = horarios[index_day].horarios;
+
+        const agendamento_do_dia = await listarPorData(fk_salas_id,data_agendamento);
+
+        if(!agendamento_do_dia){
+            return horario_do_dia;
+        }
+
+        
         
         
 
