@@ -43,6 +43,77 @@ export const cadastrar = async (dadosAgendamento, cx = null) => {
     }
 };
 
+
+export const verificarDisponibilidade = async (fk_salas_id, data_agendamento, cx = null) => {
+    let localCx = cx;
+
+    try {
+        if (!localCx) {
+            localCx = await pool.getConnection();
+        }
+
+        if (!isValidDateISO(data_agendamento)) {
+            throw new Error("Data de agendamento inválida.");
+        }
+
+        const index_day = getWeekdayIndex(data_agendamento);
+
+        const sala = await salaModel.buscarPorId(fk_salas_id);
+        if (!sala) {
+            throw new Error("Sala não encontrada.");
+        }
+
+        const horarios = sala.horario_funcionamento;
+        const horario_do_dia = horarios[index_day].horarios;
+
+        const agendamento_do_dia = await listarPorData(fk_salas_id, data_agendamento);
+
+        if (!agendamento_do_dia) {
+            return horario_do_dia;
+        }
+
+        // Injeta o usuário dentro de cada horário reservado
+        agendamento_do_dia.forEach(a => {
+            a.horarios.forEach(h => {
+                h.usuario_id = a.fk_usuario_id;
+            });
+        });
+
+        const horariosReservados = agendamento_do_dia.flatMap(a => a.horarios);
+
+        const disponibilidade = horario_do_dia.map(horario => {
+
+            let reservado = false;
+
+            for (const h of horariosReservados) {
+                if (h.inicio === horario.inicio && h.fim === horario.fim) {
+                    reservado = true;
+                    horario.disponivel = false;
+                    horario.usuario_id = h.usuario_id;
+                    break;
+                }
+            }
+
+            if (!reservado) {
+                horario.disponivel = true;
+                horario.usuario_id = null;
+            }
+
+            return horario;
+        });
+
+        return disponibilidade;
+
+    } catch (error) {
+        throw new Error("Erro ao verificar disponibilidade: " + error.message);
+    } finally {
+        if (!cx && localCx) {
+            localCx.release();
+        }
+    }
+};
+
+
 export const buscarPorId = async (id, cx) => {
     let localCx = cx;
     try {
@@ -141,49 +212,27 @@ export const deletar = async (id, cx = null) => {
     }
 };
 
-export const verificarDisponibilidade = async (fk_salas_id, data_agendamento, cx = null) => {
-    let localCx = cx;
-    try {
-        if (!localCx) {
-            localCx = await pool.getConnection();
-        }
-        if (!isDateValida(data_agendamento)) {
-            throw new Error("Data de agendamento inválida.");
-        }
 
-        // Obtem o index do dia da semana, exemplo: 0 => Domingo
-        const index_day = data_agendamento.getDay();
 
-        const sala = await salaModel.buscarPorId(fk_salas_id);
-        // Verifica se a sala existe
-        if(!sala){
-            throw new Error("Sala não encontrada.");
-        }
-        // Pega os horários de funcionamento de todos os dias;
-        // --> Uma array json de 0 a 6 que representa dotos os dias da semana;
-        const horarios = sala.horario_funcionamento;
-        //Obtem o horario do dia escolhido, pelo index_day
-        const horario_do_dia = horarios[index_day].horarios;
+function isValidDateISO(dateStr) {
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateStr)) return false;
 
-        const agendamento_do_dia = await listarPorData(fk_salas_id,data_agendamento);
+  const date = new Date(dateStr);
 
-        if(!agendamento_do_dia){
-            return horario_do_dia;
-        }
+  if (isNaN(date.getTime())) return false;
 
-        
-        
-        
+  const [y, m, d] = dateStr.split("-").map(Number);
 
-    } catch (error) {
-        throw new Error("Erro ao verificar disponibilidade: " + error.message);
-    } finally {
-        if (!cx && localCx) {
-            localCx.release();
-        }
-    }
-};
+  return (
+    date.getUTCFullYear() === y &&
+    date.getUTCMonth() + 1 === m &&
+    date.getUTCDate() === d
+  );
+}
 
-const isDateValida = (valor) => {
-  return valor instanceof Date && !isNaN(valor.getTime());
+function getWeekdayIndex(dateStr) {
+  const date = new Date(dateStr);
+  if (isNaN(date)) return null; // data inválida
+  return date.getDay();
 }
