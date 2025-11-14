@@ -108,10 +108,28 @@ INSERT INTO Agendamentos (fk_usuario_id, fk_salas_id, data_agendamento, horarios
     1, -- fk_salas_id (Laboratório 1)
     '2025-11-10', -- data_agendamento
     '[
-        {"inicio": "08:00:00", "fim": "09:00:00"},
-        {"inicio": "09:00:00", "fim": "10:00:00"}
+        {"inicio": "08:00", "fim": "09:00"},
+        {"inicio": "09:00", "fim": "10:00"}
     ]', -- horarios (JSON)
     'Aula de Banco de Dados'
+),
+(
+    2, -- fk_usuario_id (Maria Silva)
+    1, -- fk_salas_id (Laboratório 1)
+    '2025-11-10', -- data_agendamento
+    '[
+        {"inicio":"14:00", "fim":"16:00"}
+    ]', -- horarios (JSON)
+    'Aula de TCC'
+),
+(
+    3, -- fk_usuario_id (Maria Silva)
+    1, -- fk_salas_id (Laboratório 1)
+    '2025-11-10', -- data_agendamento
+    '[
+        {"inicio":"18:00", "fim":"20:00"}
+    ]', -- horarios (JSON)
+    'Aula de Pw3'
 ),
 (
     2, -- fk_usuario_id (Maria Silva)
