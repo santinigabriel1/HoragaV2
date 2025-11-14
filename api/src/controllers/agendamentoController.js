@@ -10,3 +10,18 @@ export const verificarDisponibilidade = async (req, res) => {
         return responses.error(res, { message: error.message });
     }
 };
+
+export const cadastrar = async (req, res) => {
+    try {
+
+        const {fk_usuario_id,fk_salas_id,data_agendamento,horarios,proposito} = req.body;
+
+        //Fazer o controle para verificar se os dados são válidos
+
+        const agendamento = await AgendamentoModel.cadastrar(req.body);
+
+        return responses.created(res, {message:"Horário agendado", data:agendamento});
+    } catch (error) {
+        return responses.error(res, { message: error.message });
+    }
+};

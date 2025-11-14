@@ -4,6 +4,7 @@ import express from 'express';
 
 const router = express.Router();
 
+router.post('/agendamento', agendamentoController.cadastrar);
 router.get('/agendamento/:salas_id/:data_agendamento', agendamentoController.verificarDisponibilidade);
 
 export default router;

@@ -43,6 +43,77 @@ export const cadastrar = async (dadosAgendamento, cx = null) => {
     }
 };
 
+
+export const verificarDisponibilidade = async (fk_salas_id, data_agendamento, cx = null) => {
+    let localCx = cx;
+
+    try {
+        if (!localCx) {
+            localCx = await pool.getConnection();
+        }
+
+        if (!isValidDateISO(data_agendamento)) {
+            throw new Error("Data de agendamento inválida.");
+        }
+
+        const index_day = getWeekdayIndex(data_agendamento);
+
+        const sala = await salaModel.buscarPorId(fk_salas_id);
+        if (!sala) {
+            throw new Error("Sala não encontrada.");
+        }
+
+        const horarios = sala.horario_funcionamento;
+        const horario_do_dia = horarios[index_day].horarios;
+
+        const agendamento_do_dia = await listarPorData(fk_salas_id, data_agendamento);
+
+        if (!agendamento_do_dia) {
+            return horario_do_dia;
+        }
+
+        // Injeta o usuário dentro de cada horário reservado
+        agendamento_do_dia.forEach(a => {
+            a.horarios.forEach(h => {
+                h.usuario_id = a.fk_usuario_id;
+            });
+        });
+
+        const horariosReservados = agendamento_do_dia.flatMap(a => a.horarios);
+
+        const disponibilidade = horario_do_dia.map(horario => {
+
+            let reservado = false;
+
+            for (const h of horariosReservados) {
+                if (h.inicio === horario.inicio && h.fim === horario.fim) {
+                    reservado = true;
+                    horario.disponivel = false;
+                    horario.usuario_id = h.usuario_id;
+                    break;
+                }
+            }
+
+            if (!reservado) {
+                horario.disponivel = true;
+                horario.usuario_id = null;
+            }
+
+            return horario;
+        });
+
+        return disponibilidade;
+
+    } catch (error) {
+        throw new Error("Erro ao verificar disponibilidade: " + error.message);
+    } finally {
+        if (!cx && localCx) {
+            localCx.release();
+        }
+    }
+};
+
+
 export const buscarPorId = async (id, cx) => {
     let localCx = cx;
     try {
@@ -141,74 +212,6 @@ export const deletar = async (id, cx = null) => {
     }
 };
 
-export const verificarDisponibilidade = async (fk_salas_id, data_agendamento, cx = null) => {
-    let localCx = cx;
-
-    try {
-        if (!localCx) {
-            localCx = await pool.getConnection();
-        }
-
-        if (!isValidDateISO(data_agendamento)) {
-            throw new Error("Data de agendamento inválida.");
-        }
-
-        const index_day = getWeekdayIndex(data_agendamento);
-
-        const sala = await salaModel.buscarPorId(fk_salas_id);
-        if (!sala) {
-            throw new Error("Sala não encontrada.");
-        }
-
-        const horarios = sala.horario_funcionamento;
-        const horario_do_dia = horarios[index_day].horarios;
-
-        const agendamento_do_dia = await listarPorData(fk_salas_id, data_agendamento);
-
-        if (!agendamento_do_dia) {
-            return horario_do_dia;
-        }
-
-        // Injeta o usuário dentro de cada horário reservado
-        agendamento_do_dia.forEach(a => {
-            a.horarios.forEach(h => {
-                h.usuario_id = a.fk_usuario_id;
-            });
-        });
-
-        const horariosReservados = agendamento_do_dia.flatMap(a => a.horarios);
-
-        const disponibilidade = horario_do_dia.map(horario => {
-
-            let reservado = false;
-
-            for (const h of horariosReservados) {
-                if (h.inicio === horario.inicio && h.fim === horario.fim) {
-                    reservado = true;
-                    horario.disponivel = false;
-                    horario.usuario_id = h.usuario_id;
-                    break;
-                }
-            }
-
-            if (!reservado) {
-                horario.disponivel = true;
-                horario.usuario_id = null;
-            }
-
-            return horario;
-        });
-
-        return disponibilidade;
-
-    } catch (error) {
-        throw new Error("Erro ao verificar disponibilidade: " + error.message);
-    } finally {
-        if (!cx && localCx) {
-            localCx.release();
-        }
-    }
-};
 
 
 function isValidDateISO(dateStr) {
