@@ -158,32 +158,65 @@ Content-Type: application/json
 Árvore dos principais arquivos:
 ```
 .
-├─ docker-compose.yml
-├─ Makefile
-├─ README.md
-├─ api/
-│  ├─ package.json
-│  ├─ sql/
-│  │  ├─ schema.sql
-│  │  └─ seed.sql
-│  └─ src/
-│     ├─ app.js
-│     ├─ config/
-│     │  └─ config.js
-│     ├─ controllers/
-│     │  └─ usuarioController.js
-│     ├─ database/
-│     │  └─ data.js
-│     ├─ models/
-│     │  ├─ UsuarioModel.js
-│     │  ├─ InstituicaoModel.js
-│     │  ├─ SalasModel.js
-│     │  └─ AgendamentoModel.js
-│     └─ routes/
-│        └─ usuarioRoutes.js
-└─ front/
-   ├─ app.js
-   └─ package.json
+|   README.md
+|   docker-compose.yml
+|   Makefile
+|   arvore.txt
+|   
++---front
+|       package-lock.json
+|       package.json
+|       app.js
+|       
++---api
+|   |   package-lock.json
+|   |   package.json
+|   |   
+|   +---sql
+|   |       schema.sql
+|   |       seed.sql
+|   |       
+|   \---src
+|       |   app.js
+|       |   
+|       +---controllers
+|       |       usuarioController.js
+|       |       instituicaoUsuarioController.js
+|       |       horarioController.js
+|       |       instituicoesController.js
+|       |       salasController.js
+|       |       agendamentoController.js
+|       |       
+|       +---database
+|       |       data.js
+|       |       
+|       +---routes
+|       |       usuarioRoutes.js
+|       |       instituicoesRoutes.js
+|       |       horarioRoutes.js
+|       |       agendamentoRoutes.js
+|       |       instituicaoUsuarioRoutes.js
+|       |       salasRoutes.js
+|       |       
+|       +---models
+|       |       HorarioModel.js
+|       |       AgendamentoModel.js
+|       |       SessoesModel.js
+|       |       InstituicaoUsuarioModel.js
+|       |       InstituicoesModel.js
+|       |       SalasModel.js
+|       |       UsuarioModel.js
+|       |       
+|       +---config
+|       |       config.js
+|       |       
+|       +---utils
+|       |       sessoesCache.js
+|       |       responses.js
+|       |       
+|       \---middlewares
+|               autenticacao.js
+|
 ```
 
 Arquivos principais (links):
