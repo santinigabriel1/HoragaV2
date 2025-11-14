@@ -9,7 +9,7 @@ import * as responses from "../utils/responses.js";
  * @param {import("express").Response} res - Objeto da resposta HTTP.
  * @returns {Promise<Object>} Retorna o vínculo criado ou erro.
  */
-export const solicitarCadastro = async (req, res) => {
+export const solicitar = async (req, res) => {
   try {
     const usuario = req.loginId;
     const { instituicao } = req.body;
@@ -19,6 +19,10 @@ export const solicitarCadastro = async (req, res) => {
         statusCode: 400,
         message: "Dados incompletos. 'usuario' e 'instituicao' são obrigatórios.",
       });
+    }
+    const instituicaoExistente = await InstituicaoModel.buscarPorId(instituicao);
+    if (!instituicaoExistente) {
+      return responses.notFound(res, { message: "Instituição não encontrada." });
     }
 
     // Verifica se já existe vínculo
@@ -30,8 +34,53 @@ export const solicitarCadastro = async (req, res) => {
       });
     }
 
-    const novoVinculo = await InstituicaoUsuarioModel.solicitarCadastro({ instituicao, usuario });
+    const novoVinculo = await InstituicaoUsuarioModel.solicitar({ instituicao, usuario });
     return responses.created(res, { message: "Solicitação enviada com sucesso.", data: novoVinculo });
+  } catch (error) {
+    return responses.error(res, { message: error.message });
+  }
+};
+
+/**
+ * Lista todas as instituições de um usuário.
+ *
+ * @param {import("express").Request} req - Objeto da requisição contendo parâmetro `usuario_id`.
+ * @param {import("express").Response} res - Objeto da resposta HTTP.
+ * @returns {Promise<Object[]>} Retorna a lista de instituições do usuário.
+ */
+export const listarInstituicoes = async (req, res) => {
+  try {
+    const usuario_id = req.loginId;
+
+    if (!usuario_id) {
+      return responses.error(res, { statusCode: 400, message: "ID do usuário é obrigatório." });
+    }
+
+    const instituicoes = await InstituicaoUsuarioModel.listarInstituicoes(usuario_id);
+    return responses.success(res, { message: "Instituições listadas com sucesso.", data: instituicoes });
+  } catch (error) {
+    return responses.error(res, { message: error.message });
+  }
+};
+
+/**
+ * Remove um vínculo entre usuário e instituição.
+ *
+ * @param {import("express").Request} req - Objeto da requisição contendo parâmetro `id`.
+ * @param {import("express").Response} res - Objeto da resposta HTTP.
+ * @returns {Promise<Object>} Retorna confirmação da remoção ou erro.
+ */
+export const sair = async (req, res) => {
+  try {
+    const usuario_id = req.loginId;
+    const { vinculo_id } = req.body;
+
+    if (!vinculo_id) {
+      return responses.error(res, { statusCode: 400, message: "ID do vínculo é obrigatório." });
+    }
+
+    await InstituicaoUsuarioModel.sair(usuario_id, vinculo_id);
+    return responses.success(res, { message: "Vínculo removido com sucesso." });
   } catch (error) {
     return responses.error(res, { message: error.message });
   }
@@ -80,29 +129,6 @@ export const cadastrar = async (req, res) => {
 };
 
 /**
- * Atualiza um vínculo entre usuário e instituição.
- *
- * @param {import("express").Request} req - Objeto da requisição contendo `id` do vínculo e body com campos a atualizar.
- * @param {import("express").Response} res - Objeto da resposta HTTP.
- * @returns {Promise<Object>} Retorna o vínculo atualizado ou erro.
- */
-export const atualizar = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const dados = req.body;
-
-    if (!id) {
-      return responses.error(res, { statusCode: 400, message: "ID do vínculo é obrigatório." });
-    }
-
-    const atualizado = await InstituicaoUsuarioModel.atualizar(id, dados);
-    return responses.success(res, { message: "Vínculo atualizado com sucesso.", data: atualizado });
-  } catch (error) {
-    return responses.error(res, { message: error.message });
-  }
-};
-
-/**
  * Busca um vínculo pelo ID.
  *
  * @param {import("express").Request} req - Objeto da requisição contendo parâmetro `id`.
@@ -129,28 +155,35 @@ export const buscarPorId = async (req, res) => {
 };
 
 /**
- * Remove um vínculo entre usuário e instituição.
+ * Atualiza um vínculo entre usuário e instituição.
  *
- * @param {import("express").Request} req - Objeto da requisição contendo parâmetro `id`.
+ * @param {import("express").Request} req - Objeto da requisição contendo `id` do vínculo e body com campos a atualizar.
  * @param {import("express").Response} res - Objeto da resposta HTTP.
- * @returns {Promise<Object>} Retorna confirmação da remoção ou erro.
+ * @returns {Promise<Object>} Retorna o vínculo atualizado ou erro.
  */
-export const sairDoVinculo = async (req, res) => {
+export const atualizar = async (req, res) => {
   try {
-    const usuario_id = req.loginId;
-    const { vinculo_id } = req.body;
+    const id = req.params.id;
+    const dados = req.body;
 
-    if (!vinculo_id) {
+    if (!id) {
       return responses.error(res, { statusCode: 400, message: "ID do vínculo é obrigatório." });
     }
 
-    await InstituicaoUsuarioModel.sairDoVinculo(usuario_id, vinculo_id);
-    return responses.success(res, { message: "Vínculo removido com sucesso." });
+    const atualizado = await InstituicaoUsuarioModel.atualizar(id, dados);
+    return responses.success(res, { message: "Vínculo atualizado com sucesso.", data: atualizado });
   } catch (error) {
     return responses.error(res, { message: error.message });
   }
 };
 
+/**
+ * Deleta um vínculo entre usuário e instituição.
+ *
+ * @param {import("express").Request} req - Objeto da requisição contendo parâmetro `id`.
+ * @param {import("express").Response} res - Objeto da resposta HTTP.
+ * @returns {Promise<Object>} Retorna confirmação da remoção ou erro.
+ */
 export const deletar = async (req, res) => {
   try {
     const id = req.params.id;
@@ -167,35 +200,13 @@ export const deletar = async (req, res) => {
 };
 
 /**
- * Lista todas as instituições de um usuário.
- *
- * @param {import("express").Request} req - Objeto da requisição contendo parâmetro `usuario_id`.
- * @param {import("express").Response} res - Objeto da resposta HTTP.
- * @returns {Promise<Object[]>} Retorna a lista de instituições do usuário.
- */
-export const listarInstituicoesPorUsuario = async (req, res) => {
-  try {
-    const usuario_id = req.loginId;
-
-    if (!usuario_id) {
-      return responses.error(res, { statusCode: 400, message: "ID do usuário é obrigatório." });
-    }
-
-    const instituicoes = await InstituicaoUsuarioModel.listarInstituicoesPorUsuario(usuario_id);
-    return responses.success(res, { message: "Instituições listadas com sucesso.", data: instituicoes });
-  } catch (error) {
-    return responses.error(res, { message: error.message });
-  }
-};
-
-/**
  * Lista todos os usuários de uma instituição.
  *
  * @param {import("express").Request} req - Objeto da requisição contendo parâmetro `instituicao_id`.
  * @param {import("express").Response} res - Objeto da resposta HTTP.
  * @returns {Promise<Object[]>} Retorna a lista de usuários vinculados à instituição.
  */
-export const listarUsuariosPorInstituicao = async (req, res) => {
+export const listarUsuarios = async (req, res) => {
   try {
     const instituicao_id = req.params.instituicao_id;
 
@@ -203,7 +214,7 @@ export const listarUsuariosPorInstituicao = async (req, res) => {
       return responses.error(res, { statusCode: 400, message: "ID da instituição é obrigatório." });
     }
 
-    const usuarios = await InstituicaoUsuarioModel.listarUsuariosPorInstituicao(instituicao_id);
+    const usuarios = await InstituicaoUsuarioModel.listarUsuarios(instituicao_id);
     return responses.success(res, { message: "Usuários listados com sucesso.", data: usuarios });
   } catch (error) {
     return responses.error(res, { message: error.message });

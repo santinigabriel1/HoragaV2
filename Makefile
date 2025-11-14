@@ -20,3 +20,10 @@ reset-db:
 # Executa apenas o seed (dados iniciais)
 seed:
 	docker exec -i $(CONTAINER_NAME) mysql -u $(DB_USER) -p$(DB_PASS) $(DB_NAME) < $(SEED)
+
+# Iniciar servidor via doker
+docker-up:
+	docker compose up -d
+
+docker-down: 
+	docker compose down

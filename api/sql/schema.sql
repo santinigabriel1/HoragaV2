@@ -5,6 +5,7 @@ DROP TABLE IF EXISTS inst_user; -- IGNORE
 DROP TABLE IF EXISTS InstituicaoUsuario;
 DROP TABLE IF EXISTS Agendamentos;
 DROP TABLE IF EXISTS Salas;
+DROP TABLE IF EXISTS Horarios;
 DROP TABLE IF EXISTS Instituicoes;
 DROP TABLE IF EXISTS Sessoes;
 DROP TABLE IF EXISTS Token;
@@ -26,10 +27,19 @@ CREATE TABLE Salas (
     id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
     fk_instituicao_id BIGINT unsigned NOT NULL,
     nome VARCHAR(250) NOT NULL,
-    capacidade INT,
-    horario JSON,
+    descricao VARCHAR(250),
+    horario_funcionamento JSON,
     createdAt datetime DEFAULT CURRENT_TIMESTAMP,
     updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP     
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE Horarios (
+    id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
+    fk_instituicao_id BIGINT unsigned NOT NULL,
+    descricao VARCHAR(255) NOT NULL,
+    horario JSON NOT NULL,
+    createdAt datetime DEFAULT CURRENT_TIMESTAMP,
+    updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Criação da tabela de usuários
@@ -61,10 +71,11 @@ CREATE TABLE Agendamentos (
     id BIGINT unsigned AUTO_INCREMENT PRIMARY KEY,
     fk_usuario_id BIGINT unsigned NOT NULL,
     fk_salas_id BIGINT unsigned NOT NULL,
-    titulo VARCHAR(255) NOT NULL,
-    descricao TEXT,
-    data DATE NOT NULL,
-    horarios JSON,
+    data_agendamento DATE NOT NULL,
+    horarios JSON NOT NULL,
+    proposito TEXT,
+    status ENUM('CONFIRMADO', 'CANCELADO') DEFAULT 'CONFIRMADO',
+    comentario VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
     createdAt datetime DEFAULT CURRENT_TIMESTAMP,
     updatedAt datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -74,8 +85,10 @@ CREATE TABLE Sessoes (
   usuario BIGINT unsigned NOT NULL,
   `token` varchar(255) DEFAULT NULL,
   validade datetime DEFAULT NULL,
+  createdAt datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (usuario)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 ALTER TABLE Instituicoes ADD CONSTRAINT fk_organizador
     FOREIGN KEY (organizador)
@@ -93,13 +106,20 @@ ALTER TABLE InstituicaoUsuario ADD CONSTRAINT FK_InstituicaoUsuario_Usuarios
     FOREIGN KEY (fk_usuario_id)
     REFERENCES Usuarios (id) ON DELETE CASCADE;
 
+ALTER TABLE Sessoes ADD CONSTRAINT FK_Sessoes_Usuarios
+    FOREIGN KEY (usuario)
+    REFERENCES Usuarios (id) ON DELETE CASCADE; 
+
+ALTER TABLE Horarios ADD CONSTRAINT FK_Horarios_Instituicoes
+    FOREIGN KEY (fk_instituicao_id)
+    REFERENCES Instituicoes (id) ON DELETE CASCADE;
+
+-- Regra: Se o Usuário (quem agendou) for deletado, seus agendamentos são deletados.
 ALTER TABLE Agendamentos ADD CONSTRAINT FK_Agendamentos_Usuarios
     FOREIGN KEY (fk_usuario_id)
     REFERENCES Usuarios (id) ON DELETE CASCADE;
 
+-- Regra: Se a Sala for deletada, seus agendamentos são deletados.
 ALTER TABLE Agendamentos ADD CONSTRAINT FK_Agendamentos_Salas
     FOREIGN KEY (fk_salas_id)
     REFERENCES Salas (id) ON DELETE CASCADE;
-ALTER TABLE Sessoes ADD CONSTRAINT FK_Sessoes_Usuarios
-    FOREIGN KEY (usuario)
-    REFERENCES Usuarios (id) ON DELETE CASCADE; 
