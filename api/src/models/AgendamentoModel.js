@@ -1,48 +1,6 @@
 import pool from "../database/data.js";
 import * as salaModel from "./SalasModel.js";
-
-export const cadastrar = async (dadosAgendamento, cx = null) => {
-    let localCx = cx;
-    try {
-        if (!localCx) {
-            // Obtém uma nova conexão se nenhuma for fornecida
-            localCx = await pool.getConnection();
-        }
-
-        const {
-            fk_usuario_id,
-            fk_salas_id,
-            data_agendamento,
-            horarios,
-            proposito
-        } = dadosAgendamento;
-
-        const query = `
-            INSERT INTO Agendamentos 
-            (fk_usuario_id, fk_salas_id, data_agendamento, horarios, proposito) 
-            VALUES (?, ?, ?, ?, ?)
-        `;
-
-        const [result] = await localCx.execute(query, [
-            fk_usuario_id,
-            fk_salas_id,
-            data_agendamento,
-            horarios,
-            proposito
-        ]);
-
-        return { id: result.insertId, ...dadosAgendamento };
-
-    } catch (error) {
-        throw new Error("Erro ao cadastrar Agendamento: " + error.message);
-    } finally {
-        if (!cx && localCx) {
-            // Libera a conexão se foi criada localmente
-            localCx.release();
-        }
-    }
-};
-
+import { isValidDateISO, getWeekdayIndex } from "../utils/helpers.js";
 
 export const verificarDisponibilidade = async (fk_salas_id, data_agendamento, cx = null) => {
     let localCx = cx;
@@ -113,6 +71,47 @@ export const verificarDisponibilidade = async (fk_salas_id, data_agendamento, cx
     }
 };
 
+export const cadastrar = async (dadosAgendamento, cx = null) => {
+    let localCx = cx;
+    try {
+        if (!localCx) {
+            // Obtém uma nova conexão se nenhuma for fornecida
+            localCx = await pool.getConnection();
+        }
+
+        const {
+            fk_usuario_id,
+            fk_salas_id,
+            data_agendamento,
+            horarios,
+            proposito
+        } = dadosAgendamento;
+
+        const query = `
+            INSERT INTO Agendamentos 
+            (fk_usuario_id, fk_salas_id, data_agendamento, horarios, proposito) 
+            VALUES (?, ?, ?, ?, ?)
+        `;
+
+        const [result] = await localCx.execute(query, [
+            fk_usuario_id,
+            fk_salas_id,
+            data_agendamento,
+            horarios,
+            proposito
+        ]);
+
+        return { id: result.insertId, ...dadosAgendamento };
+
+    } catch (error) {
+        throw new Error("Erro ao cadastrar Agendamento: " + error.message);
+    } finally {
+        if (!cx && localCx) {
+            // Libera a conexão se foi criada localmente
+            localCx.release();
+        }
+    }
+};
 
 export const buscarPorId = async (id, cx) => {
     let localCx = cx;
@@ -211,28 +210,3 @@ export const deletar = async (id, cx = null) => {
         }
     }
 };
-
-
-
-function isValidDateISO(dateStr) {
-  const regex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!regex.test(dateStr)) return false;
-
-  const date = new Date(dateStr);
-
-  if (isNaN(date.getTime())) return false;
-
-  const [y, m, d] = dateStr.split("-").map(Number);
-
-  return (
-    date.getUTCFullYear() === y &&
-    date.getUTCMonth() + 1 === m &&
-    date.getUTCDate() === d
-  );
-}
-
-function getWeekdayIndex(dateStr) {
-  const date = new Date(dateStr);
-  if (isNaN(date)) return null; // data inválida
-  return date.getDay();
-}
