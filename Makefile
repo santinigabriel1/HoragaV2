@@ -27,3 +27,6 @@ docker-up:
 
 docker-down: 
 	docker compose down
+
+docker-logs:
+	docker compose logs -f
