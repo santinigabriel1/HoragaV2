@@ -1,139 +1,181 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { ref, computed, reactive } from 'vue'
+import { Menu, Bell, User, X, Camera, Loader2, Upload } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api'
+import Modal from '@/components/ui/Modal.vue'
 
-// Hooks
-const router = useRouter()
+defineProps<{
+  title?: string
+}>()
 
-// Estados
-const showPassword = ref(false)
-const isLoading = ref(false)
+defineEmits(['toggleSidebar'])
 
-// Usamos 'reactive' para agrupar os dados do formulário (igual ao useState com objeto)
-const formData = reactive({
-  name: '',
-  email: '',
-  password: '',
-  confirmPassword: ''
+const authStore = useAuthStore()
+const showProfileModal = ref(false)
+const isSaving = ref(false)
+
+// Referência para o input de arquivo invisível
+const fileInput = ref<HTMLInputElement | null>(null)
+
+// --- 1. LÓGICA DAS INICIAIS ---
+const userInitials = computed(() => {
+  const name = authStore.user?.nome || 'Usuario'
+  const parts = name.trim().split(' ')
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 })
 
-// Função de Cadastro
-const handleRegister = async () => {
-  if (formData.password !== formData.confirmPassword) {
-    alert('As senhas não coincidem!')
-    return
+// --- 2. EDIÇÃO DE PERFIL ---
+const formData = reactive({
+  nome: '',
+  email: '',
+  avatar: '' 
+})
+
+const openProfile = () => {
+  if (authStore.user) {
+    formData.nome = authStore.user.nome
+    formData.email = authStore.user.email
+    formData.avatar = authStore.user.avatar || ''
   }
+  showProfileModal.value = true
+}
 
-  isLoading.value = true
+// Função para acionar o clique no input escondido
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
 
-  // Simulação de cadastro
-  console.log('Dados do cadastro:', formData)
+// Função para processar o arquivo selecionado
+const handleFileChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files[0]) {
+    const file = target.files[0]
+    
+    // Validação de tamanho (ex: máx 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 2MB.')
+      return
+    }
 
-  setTimeout(() => {
-    isLoading.value = false
-    // Aqui você redirecionaria para o dashboard ou login
-    router.push('/agendamento') 
-  }, 1000)
+    // Converter para Base64 (para enviar via JSON)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      // O resultado é uma string longa: "data:image/png;base64,iVBOR..."
+      formData.avatar = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+const handleUpdateProfile = async () => {
+  isSaving.value = true
+  try {
+    if (!authStore.user?.id) return
+
+    // Envia o JSON normal (agora com a string Base64 no avatar se foi alterado)
+    const { data } = await api.patch(`/usuario/${authStore.user.id}`, {
+      nome: formData.nome,
+      email: formData.email,
+      avatar: formData.avatar 
+    })
+
+    if (data.success) {
+      alert('Perfil atualizado com sucesso!')
+      
+      // Atualiza o Store e LocalStorage
+      const updatedUser = { ...authStore.user, ...data.data }
+      authStore.user = updatedUser
+      localStorage.setItem('horaga_user', JSON.stringify(updatedUser))
+      
+      showProfileModal.value = false
+    }
+  } catch (error: any) {
+    console.error(error)
+    alert('Erro ao atualizar: ' + (error.response?.data?.mensagem || error.message))
+  } finally {
+    isSaving.value = false
+  }
 }
 </script>
 
 <template>
-  <main class="min-h-screen bg-rose-50/50 flex items-center justify-center p-4">
-    <div class="w-full max-w-md animate-fade-in">
-      
-      <div class="text-center mb-8">
-        <div class="text-3xl font-bold text-rose-800 mb-2 tracking-tight">HORAGA</div>
-        <p class="text-slate-500">Crie sua conta</p>
-      </div>
-
-      <div class="bg-white rounded-xl shadow-xl border-none p-6 sm:p-8">
-        <div class="mb-6">
-          <h2 class="text-2xl font-bold text-slate-900">Cadastro</h2>
-          <p class="text-sm text-slate-500 mt-1">Preencha os dados abaixo para começar</p>
-        </div>
-
-        <form @submit.prevent="handleRegister" class="space-y-4">
-          
-          <div class="space-y-2">
-            <label for="name" class="text-sm font-medium leading-none text-slate-900">Nome Completo</label>
-            <input
-              id="name"
-              v-model="formData.name"
-              type="text"
-              placeholder="João Silva"
-              required
-              class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 transition-all"
-            />
-          </div>
-
-          <div class="space-y-2">
-            <label for="email" class="text-sm font-medium leading-none text-slate-900">E-mail</label>
-            <input
-              id="email"
-              v-model="formData.email"
-              type="email"
-              placeholder="seu@email.com"
-              required
-              class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 transition-all"
-            />
-          </div>
-
-          <div class="space-y-2">
-            <label for="password" class="text-sm font-medium leading-none text-slate-900">Senha</label>
-            <div class="relative">
-              <input
-                id="password"
-                v-model="formData.password"
-                :type="showPassword ? 'text' : 'password'"
-                placeholder="••••••••"
-                required
-                class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 pr-10 transition-all"
-              />
-              <button
-                type="button"
-                @click="showPassword = !showPassword"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <EyeOff v-if="showPassword" class="w-4 h-4" />
-                <Eye v-else class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div class="space-y-2">
-            <label for="confirmPassword" class="text-sm font-medium leading-none text-slate-900">Confirmar Senha</label>
-            <input
-              id="confirmPassword"
-              v-model="formData.confirmPassword"
-              :type="showPassword ? 'text' : 'password'"
-              placeholder="••••••••"
-              required
-              class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 transition-all"
-            />
-          </div>
-
-          <button 
-            type="submit"
-            :disabled="isLoading" 
-            class="inline-flex w-full items-center justify-center whitespace-nowrap rounded-md text-sm font-bold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-[#be123c] text-white hover:bg-[#9f1239] h-10 px-4 py-2 mt-2"
-          >
-            <span v-if="isLoading">Criando conta...</span>
-            <span v-else>Criar Conta</span>
-          </button>
-        </form>
-
-        <div class="mt-6 text-center text-sm">
-          <span class="text-slate-500">Já tem uma conta? </span>
-          <RouterLink to="/login" class="text-[#be123c] hover:underline font-bold">
-            Faça login
-          </RouterLink>
-        </div>
-      </div>
-
-      <p class="text-center text-xs text-slate-500 mt-6">
-        Ao se cadastrar, você concorda com nossos Termos de Serviço
-      </p>
+  <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 z-30 flex-shrink-0">
+    
+    <div class="flex items-center gap-4">
+      <button @click="$emit('toggleSidebar')" class="md:hidden text-slate-600 hover:bg-slate-100 p-2 rounded-md">
+        <Menu class="w-6 h-6" />
+      </button>
+      <h2 class="text-lg font-semibold text-slate-800 truncate max-w-[200px] sm:max-w-none">
+        {{ title || `Olá, ${authStore.user?.nome?.split(' ')[0]}` }}
+      </h2>
     </div>
-  </main>
+    
+    <div class="flex items-center gap-4">
+      <button class="text-slate-500 hover:bg-slate-100 p-2 rounded-full relative transition-colors">
+        <Bell class="w-5 h-5" />
+        <span class="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+      </button>
+      
+      <button 
+        @click="openProfile"
+        class="w-9 h-9 rounded-full bg-rose-100 flex items-center justify-center text-rose-800 font-bold text-sm border border-rose-200 hover:ring-2 hover:ring-rose-200 transition-all cursor-pointer overflow-hidden"
+        title="Meu Perfil"
+      >
+        <img v-if="authStore.user?.avatar && authStore.user.avatar.length > 10" :src="authStore.user.avatar" alt="Avatar" class="w-full h-full object-cover" />
+        <span v-else>{{ userInitials }}</span>
+      </button>
+    </div>
+
+    <Modal :is-open="showProfileModal" title="Editar Perfil" @close="showProfileModal = false">
+      <form @submit.prevent="handleUpdateProfile" class="space-y-5">
+        
+        <div class="flex flex-col items-center gap-3 mb-2">
+          <div 
+            @click="triggerFileInput"
+            class="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center border-2 border-dashed border-slate-300 text-slate-400 relative overflow-hidden group cursor-pointer hover:border-rose-400 transition-colors"
+          >
+             <img v-if="formData.avatar && formData.avatar.length > 10" :src="formData.avatar" class="w-full h-full object-cover" />
+             <User v-else class="w-8 h-8" />
+             
+             <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+               <Camera class="w-8 h-8 text-white" />
+             </div>
+          </div>
+          
+          <input 
+            type="file" 
+            ref="fileInput" 
+            class="hidden" 
+            accept="image/*" 
+            @change="handleFileChange" 
+          />
+          
+          <button type="button" @click="triggerFileInput" class="text-xs text-rose-600 font-bold hover:underline flex items-center gap-1">
+            <Upload class="w-3 h-3" /> Alterar Foto
+          </button>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1.5">Nome Completo</label>
+          <input v-model="formData.nome" type="text" required class="w-full h-10 px-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1.5">E-mail</label>
+          <input v-model="formData.email" type="email" required class="w-full h-10 px-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500" />
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="showProfileModal = false" class="flex-1 h-10 rounded-md border border-slate-300 font-medium text-slate-700 hover:bg-slate-50">Cancelar</button>
+          <button type="submit" :disabled="isSaving" class="flex-1 h-10 rounded-md bg-[#be123c] text-white font-bold hover:bg-[#9f1239] disabled:opacity-50 flex items-center justify-center gap-2">
+            <Loader2 v-if="isSaving" class="w-4 h-4 animate-spin" />
+            <span v-else>Salvar Alterações</span>
+          </button>
+        </div>
+      </form>
+    </Modal>
+
+  </header>
 </template>

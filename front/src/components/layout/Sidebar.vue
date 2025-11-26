@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
-import { Home, Calendar, Clock, BarChart3, Building2, LogOut, X } from 'lucide-vue-next'
+import { Home, Calendar, Clock, BarChart3, Building2, LogOut, X, DoorOpen } from 'lucide-vue-next'
 
 const props = defineProps<{
   isOpen: boolean
@@ -14,6 +14,7 @@ const isActive = (path: string) => route.path.startsWith(path)
 
 const menuItems = [
   { label: 'Agendamento', icon: Home, path: '/agendamento' },
+  { label: 'Salas', icon: DoorOpen, path: '/salas' }, // <--- NOVO ITEM
   { label: 'Calendário', icon: Calendar, path: '/calendario' },
   { label: 'Disponibilidade', icon: Clock, path: '/disponibilidade' },
   { label: 'Estatísticas', icon: BarChart3, path: '/estatisticas' },
