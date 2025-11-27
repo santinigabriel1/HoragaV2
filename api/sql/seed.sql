@@ -11,20 +11,20 @@ INSERT INTO Usuarios (nome, email, senha, cargo) VALUES
 ('Maria Silva', 'maria@gmail.com', '$2b$10$afbzMqlv1VvmDhsq.rKa0OgGu8H.BCM30iBE2uKD40Vn4iYSn8ydO', 'Professor'),
 ('Joao Souza', 'joao@gmail.com', '$2b$10$afbzMqlv1VvmDhsq.rKa0OgGu8H.BCM30iBE2uKD40Vn4iYSn8ydO', 'Aluno');
 
-3. Relacionamento usuário-instituição (Depende de Instituicoes e Usuarios)
+-- 3. Relacionamento usuário-instituição (Depende de Instituicoes e Usuarios)
 INSERT INTO InstituicaoUsuario (fk_instituicao_id, fk_usuario_id) VALUES
 (1, 1),
 (1, 2),
 (2, 3);
 
-4. Salas (Depende de Instituicoes)
+-- 4. Salas (Depende de Instituicoes)
 INSERT INTO Salas (fk_instituicao_id, nome, descricao) VALUES
 (1, 'Laboratório 1', 'Laboratório de informática'),
 (1, 'Auditório', 'Auditório principal da instituição'),
 (2, 'Sala 201', 'Sala de reuniões da instituição');
 
-5. Horarios (Depende de Instituicoes) 
-(MOVIDO PARA CIMA)
+-- 5. Horarios (Depende de Instituicoes) 
+-- (MOVIDO PARA CIMA)
 INSERT INTO Horarios (fk_instituicao_id, descricao, horario) VALUES
 (
     1,
