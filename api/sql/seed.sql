@@ -1,6 +1,6 @@
 USE agendamento;
 
-1. Instituições (Não depende de nada)
+-- 1. Instituições (Não depende de nada)
 INSERT INTO Instituicoes (nome, descricao) VALUES
 ('Etec Tietê', 'Instituição de ensino técnico'),
 ('Fatec Tatuí', 'Instituição de ensino superior');
