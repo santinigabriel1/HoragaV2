@@ -2,52 +2,61 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  DoorOpen, Users, Clock, AlertCircle, Bell, CalendarCheck, Trash2, Loader2 
+  DoorOpen, Users, Clock, AlertCircle, Bell, CalendarCheck, 
+  Trash2, Loader2, AlertTriangle 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
+import Modal from '@/components/ui/Modal.vue'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notification' // Store de Notificação
 
 const router = useRouter()
 const authStore = useAuthStore()
+const notification = useNotificationStore()
+
 const sidebarOpen = ref(false)
 const isLoading = ref(true)
-const isCanceling = ref<number | null>(null) // ID da reserva sendo cancelada
+const isCanceling = ref(false)
 
+// Dados
 const classrooms = ref<any[]>([])
 const recentReservations = ref<any[]>([])
 
+// Estado do Modal de Exclusão
+const showCancelModal = ref(false)
+const bookingToCancel = ref<number | null>(null)
+
 const userName = computed(() => `Bem vindo, ${authStore.userName}`)
 
+// Formatadores
 const formatDateShort = (dateStr: string) => {
   if (!dateStr) return ''
-  // Ajuste para fuso horário (gambiarra segura para visualização)
   const date = new Date(dateStr)
-  date.setMinutes(date.getMinutes() + date.getTimezoneOffset()) 
+  // Ajuste simples de fuso para visualização
+  date.setMinutes(date.getMinutes() + date.getTimezoneOffset())
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-// Função auxiliar para pegar hora sem segundos
 const formatTime = (time: string) => time ? time.substring(0, 5) : ''
 
-// --- AÇÕES ---
-
+// --- BUSCAR DADOS (AQUI ESTAVA O PROBLEMA) ---
 const fetchData = async () => {
   isLoading.value = true
   try {
-    // 1. Salas
+    // 1. Busca Salas
     const resRooms = await api.get('/salas')
     if (resRooms.data.success) {
       classrooms.value = resRooms.data.data.map((sala: any) => ({
         id: sala.id,
         name: sala.nome,
-        capacity: 30, 
+        capacity: 30, // Mock (se não tiver no banco)
         available: true 
       }))
     }
 
-    // 2. Reservas
+    // 2. Busca Agendamentos
     await fetchReservations()
 
   } catch (error) {
@@ -59,25 +68,34 @@ const fetchData = async () => {
 
 const fetchReservations = async () => {
   try {
+    // Ajuste a rota conforme seu backend (/agendamentos ou /agendamento/listar)
     const resBookings = await api.get('/agendamentos')
+    
     if (resBookings.data.success) {
       const allBookings = resBookings.data.data
       
-      // Mapeamento correto dos dados
+      // Mapeamento robusto
       recentReservations.value = allBookings
-        .slice(0, 10) // Pega as 10 últimas
+        .slice(0, 10) // Pega os 10 últimos
         .map((b: any) => {
-          // Tenta achar horário de início
+          // Tenta pegar horário de várias formas
           let startTime = b.horario_inicio
           if (!startTime && b.horarios && b.horarios.length > 0) {
             startTime = b.horarios[0].inicio
           }
 
+          // Tenta pegar nome da sala (do objeto aninhado OU da lista de salas)
+          let roomName = 'Sala ID ' + b.fk_salas_id
+          if (b.sala && b.sala.nome) {
+            roomName = b.sala.nome
+          } else {
+            const foundRoom = classrooms.value.find(c => c.id === b.fk_salas_id)
+            if (foundRoom) roomName = foundRoom.name
+          }
+
           return {
             id: b.id,
-            // Tenta pegar o nome da sala do objeto aninhado, senão busca na lista de salas carregada
-            roomName: b.sala?.nome || classrooms.value.find(c => c.id === b.fk_salas_id)?.name || `Sala ${b.fk_salas_id}`,
-            // Exibe o Assunto/Propósito como "Professor" (ou nome do usuário se a API retornar)
+            roomName: roomName,
             subject: b.proposito || 'Sem assunto', 
             date: formatDateShort(b.data_agendamento || b.data),
             time: formatTime(startTime),
@@ -90,29 +108,38 @@ const fetchReservations = async () => {
   }
 }
 
-const cancelBooking = async (id: number) => {
-  if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return
+// --- LÓGICA DE CANCELAMENTO ---
+const openCancelModal = (id: number) => {
+  bookingToCancel.value = id
+  showCancelModal.value = true
+}
 
-  isCanceling.value = id
+const confirmCancel = async () => {
+  if (!bookingToCancel.value) return
+  
+  isCanceling.value = true
   try {
-    // Certifique-se de criar a rota DELETE /agendamento/:id no backend
-    await api.delete(`/agendamento/${id}`)
+    // Ajuste a rota conforme seu backend
+    await api.delete(`/agendamento/${bookingToCancel.value}`)
     
-    // Remove da lista visualmente na hora
-    recentReservations.value = recentReservations.value.filter(r => r.id !== id)
-    alert('Agendamento cancelado.')
+    showCancelModal.value = false
+    
+    // Notificação Bonita
+    notification.showSuccess('Agendamento cancelado.', () => {
+      // Remove da lista localmente para não precisar recarregar tudo
+      recentReservations.value = recentReservations.value.filter(r => r.id !== bookingToCancel.value)
+    })
+
   } catch (error: any) {
-    alert('Erro ao cancelar: ' + (error.response?.data?.message || error.message))
+    showCancelModal.value = false
+    notification.showError('Erro ao cancelar: ' + (error.response?.data?.message || error.message))
   } finally {
-    isCanceling.value = null
+    isCanceling.value = false
   }
 }
 
 const handleLogout = () => authStore.logout()
-
-const navigateToBooking = (roomId: number) => {
-  router.push(`/agendamento/${roomId}`)
-}
+const navigateToBooking = (roomId: number) => router.push(`/agendamento/${roomId}`)
 
 onMounted(() => {
   fetchData()
@@ -120,8 +147,7 @@ onMounted(() => {
 
 // Mock Notificações
 const notifications = [
-  { id: 1, type: 'maintenance', title: 'Manutenção Programada', message: 'Lab. Informática 03 estará indisponível amanhã.' },
-  { id: 2, type: 'event', title: 'Evento - Colóquio de Pesquisa', message: 'Sala Maker será utilizada para evento sexta-feira.' },
+  { id: 1, type: 'maintenance', title: 'Manutenção Programada', message: 'Lab. Informática 03 estará indisponível amanhã.' }
 ]
 </script>
 
@@ -148,6 +174,10 @@ const notifications = [
 
           <div v-else>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div v-if="classrooms.length === 0" class="col-span-full text-center py-8 text-slate-500">
+                Nenhuma sala encontrada.
+              </div>
+
               <div 
                 v-for="room in classrooms" 
                 :key="room.id" 
@@ -213,13 +243,11 @@ const notifications = [
                         </span>
                         
                         <button 
-                          @click="cancelBooking(res.id)"
-                          :disabled="isCanceling === res.id"
+                          @click="openCancelModal(res.id)"
                           class="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-md transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                          title="Cancelar Agendamento"
+                          title="Cancelar"
                         >
-                          <Loader2 v-if="isCanceling === res.id" class="w-4 h-4 animate-spin" />
-                          <Trash2 v-else class="w-4 h-4" />
+                          <Trash2 class="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -248,9 +276,38 @@ const notifications = [
 
             </div>
           </div>
-
         </div>
       </main>
+
+      <Modal :is-open="showCancelModal" title="Cancelar Reserva" @close="showCancelModal = false">
+        <div class="text-center space-y-4">
+          <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-2">
+            <AlertTriangle class="w-8 h-8 text-red-500" />
+          </div>
+          <h3 class="text-lg font-bold text-slate-900">Tem certeza?</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">
+            Você está prestes a cancelar este agendamento. <br>
+            O horário ficará disponível para outros.
+          </p>
+          <div class="flex gap-3 pt-4">
+            <button 
+              @click="showCancelModal = false" 
+              class="flex-1 h-11 rounded-md border border-slate-300 font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Voltar
+            </button>
+            <button 
+              @click="confirmCancel" 
+              :disabled="isCanceling"
+              class="flex-1 h-11 rounded-md bg-red-600 text-white font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+            >
+              <Loader2 v-if="isCanceling" class="w-4 h-4 animate-spin" />
+              <span v-else>Sim, Cancelar</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
     </div>
   </div>
 </template>

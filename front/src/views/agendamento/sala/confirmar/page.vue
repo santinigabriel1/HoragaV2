@@ -6,11 +6,12 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notification'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-
+const notificationStore = useNotificationStore()
 // Dados da URL
 const roomId = route.params.roomId
 const dateISO = route.query.date as string
@@ -50,7 +51,7 @@ const handleSubmit = async () => {
 
     // Verifica usuário logado
     if (!authStore.user || !authStore.user.id) {
-      alert('Sessão expirada. Faça login novamente.')
+      notificationStore.showError('Sessão expirada. Faça login novamente.')
       router.push('/login')
       return
     }
@@ -74,7 +75,7 @@ const handleSubmit = async () => {
     const { data } = await api.post('/agendamento', payload)
 
     if (data.success) {
-      alert('Reserva realizada com sucesso!')
+      notificationStore.showSuccess('Reserva realizada com sucesso!')
       router.push('/calendario')
     } else {
       throw new Error(data.message || 'Erro ao salvar')
@@ -83,7 +84,7 @@ const handleSubmit = async () => {
   } catch (error: any) {
     console.error(error)
     const msg = error.response?.data?.message || error.message || 'Erro desconhecido'
-    alert(`Erro ao reservar: ${msg}`)
+    notificationStore.showError(`Erro ao reservar: ${msg}`)
   } finally {
     isLoading.value = false
   }

@@ -3,32 +3,52 @@ import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   Building2, MapPin, MoreVertical, Plus, Search, CheckCircle2, 
-  User, Pencil, Trash2, Loader2 
+  User, Pencil, Trash2, Loader2, AlertTriangle 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import Modal from '@/components/ui/Modal.vue'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notification'
 
 const router = useRouter()
+const authStore = useAuthStore()
+const notification = useNotificationStore()
+
 const sidebarOpen = ref(false)
 const searchQuery = ref('')
 const isLoading = ref(true)
 const isSaving = ref(false)
+const isDeleting = ref(false) // Estado de loading para exclusão
 const institutions = ref<any[]>([])
 
-// --- ESTADO DO MODAL ---
-const showModal = ref(false)
+// --- ESTADOS DOS MODAIS ---
+const showModal = ref(false) // Modal de Criar/Editar
+const showDeleteModal = ref(false) // Modal de Confirmação de Exclusão
 const isEditing = ref(false)
+
+// Dados do Formulário (Criar/Editar)
 const formData = reactive({
   id: null as number | null,
   nome: '',
   descricao: ''
 })
 
-// --- AÇÕES DO CRUD ---
+// Dados para Exclusão
+const itemToDelete = ref<number | null>(null)
 
-// 1. Buscar (Read)
+// --- PERMISSÃO ---
+const canManage = (inst: any) => {
+  if (!authStore.user) return false
+  const userId = Number(authStore.user.id)
+  const ownerId = Number(inst.managerId)
+  const userRole = authStore.user.cargo || ''
+  return userId === ownerId || userRole === 'Administrador'
+}
+
+// --- ACTIONS ---
+
 const fetchInstitutions = async () => {
   isLoading.value = true
   try {
@@ -40,12 +60,11 @@ const fetchInstitutions = async () => {
         name: inst.nome,
         description: inst.descricao,
         managerId: inst.organizador,
-        managerName: 'Carregando...', // Placeholder
+        managerName: 'Carregando...',
         status: 'active'
       }))
       institutions.value = items
 
-      // Busca nomes dos organizadores em segundo plano
       items.forEach(async (inst: any) => {
         if (inst.managerId) {
           try {
@@ -64,7 +83,7 @@ const fetchInstitutions = async () => {
   }
 }
 
-// 2. Abrir Modal Criar
+// --- LÓGICA DE FORMULÁRIO ---
 const openCreateModal = () => {
   isEditing.value = false
   formData.id = null
@@ -73,7 +92,6 @@ const openCreateModal = () => {
   showModal.value = true
 }
 
-// 3. Abrir Modal Editar
 const openEditModal = (inst: any) => {
   isEditing.value = true
   formData.id = inst.id
@@ -82,44 +100,64 @@ const openEditModal = (inst: any) => {
   showModal.value = true
 }
 
-// 4. Salvar (Create / Update)
 const handleSave = async () => {
   isSaving.value = true
   try {
-    if (isEditing.value && formData.id) {
-      // PATCH /instituicao/:id
-      await api.patch(`/instituicao/${formData.id}`, {
-        nome: formData.nome,
-        descricao: formData.descricao
-      })
-      alert('Instituição atualizada com sucesso!')
-    } else {
-      // POST /instituicao
-      await api.post('/instituicao', {
-        nome: formData.nome,
-        descricao: formData.descricao
-      })
-      alert('Instituição criada com sucesso!')
+    const payload = {
+      nome: formData.nome,
+      descricao: formData.descricao,
+      organizador: authStore.user?.id 
     }
+
+    if (isEditing.value && formData.id) {
+      await api.patch(`/instituicao/${formData.id}`, payload)
+      notification.showSuccess('Instituição atualizada com sucesso!', () => fetchInstitutions())
+    } else {
+      await api.post('/instituicao', payload)
+      notification.showSuccess('Instituição criada com sucesso!', () => fetchInstitutions())
+    }
+    
     showModal.value = false
-    fetchInstitutions() // Atualiza a lista
   } catch (error: any) {
-    alert('Erro: ' + (error.response?.data?.message || error.message))
+    notification.showError('Erro: ' + (error.response?.data?.message || error.message))
   } finally {
     isSaving.value = false
   }
 }
 
-// 5. Deletar
-const handleDelete = async (id: number) => {
-  if (!confirm('Tem certeza que deseja excluir esta instituição?')) return
+// --- LÓGICA DE EXCLUSÃO (NOVA) ---
+
+// 1. Abre o modal de confirmação (não deleta ainda)
+const confirmDelete = (id: number) => {
+  itemToDelete.value = id
+  showDeleteModal.value = true
+}
+
+// 2. Executa a exclusão real
+const executeDelete = async () => {
+  if (!itemToDelete.value) return
   
+  isDeleting.value = true
   try {
-    await api.delete(`/instituicao/${id}`)
-    alert('Instituição removida.')
-    fetchInstitutions()
+    await api.delete(`/instituicao/${itemToDelete.value}`)
+    
+    showDeleteModal.value = false
+    notification.showSuccess('Instituição removida.', () => fetchInstitutions())
   } catch (error: any) {
-    alert('Erro ao excluir: ' + (error.response?.data?.message || error.message))
+    // Aqui capturamos se o erro for de Chave Estrangeira (Foreign Key)
+    console.error(error)
+    showDeleteModal.value = false
+    
+    const msg = error.response?.data?.message || error.message
+    
+    // Tratamento amigável para erro de vínculo
+    if (msg.includes('foreign key') || msg.includes('constraint')) {
+      notification.showError('Não é possível excluir: Esta instituição possui salas ou horários vinculados. Exclua as salas primeiro.')
+    } else {
+      notification.showError('Erro ao excluir: ' + msg)
+    }
+  } finally {
+    isDeleting.value = false
   }
 }
 
@@ -184,11 +222,11 @@ onMounted(() => {
                   </div>
                 </div>
                 
-                <div class="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                <div v-if="canManage(inst)" class="flex gap-1">
                   <button @click="openEditModal(inst)" class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Editar">
                     <Pencil class="w-4 h-4" />
                   </button>
-                  <button @click="handleDelete(inst.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Excluir">
+                  <button @click="confirmDelete(inst.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Excluir">
                     <Trash2 class="w-4 h-4" />
                   </button>
                 </div>
@@ -214,53 +252,54 @@ onMounted(() => {
         </div>
       </main>
 
-      <Modal 
-        :is-open="showModal" 
-        :title="isEditing ? 'Editar Instituição' : 'Nova Instituição'" 
-        @close="showModal = false"
-      >
+      <Modal :is-open="showModal" :title="isEditing ? 'Editar Instituição' : 'Nova Instituição'" @close="showModal = false">
         <form @submit.prevent="handleSave" class="space-y-5">
-          
           <div class="space-y-1.5">
             <label class="block text-sm font-semibold text-slate-700">Nome da Instituição <span class="text-red-500">*</span></label>
-            <input 
-              v-model="formData.nome" 
-              type="text" 
-              required 
-              class="w-full h-10 px-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all placeholder:text-slate-400" 
-              placeholder="Ex: ETEC de Tietê - Campus 1" 
-            />
+            <input v-model="formData.nome" type="text" required class="w-full h-10 px-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all" placeholder="Ex: ETEC Central" />
           </div>
-
           <div class="space-y-1.5">
             <label class="block text-sm font-semibold text-slate-700">Descrição / Endereço</label>
-            <textarea 
-              v-model="formData.descricao" 
-              rows="3" 
-              class="w-full p-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all resize-none placeholder:text-slate-400" 
-              placeholder="Digite o endereço ou detalhes sobre esta unidade..."
-            ></textarea>
+            <textarea v-model="formData.descricao" rows="3" class="w-full p-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none" placeholder="Detalhes..."></textarea>
           </div>
-
           <div class="flex gap-3 pt-2">
+            <button type="button" @click="showModal = false" class="flex-1 h-10 rounded-md border border-slate-300 font-medium text-slate-700 hover:bg-slate-50 transition-colors">Cancelar</button>
+            <button type="submit" :disabled="isSaving || !formData.nome" class="flex-1 h-10 rounded-md bg-[#be123c] text-white font-bold hover:bg-[#9f1239] disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm">
+              <Loader2 v-if="isSaving" class="w-4 h-4 animate-spin" />
+              <span v-else>{{ isEditing ? 'Salvar' : 'Criar' }}</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal :is-open="showDeleteModal" title="Excluir Instituição" @close="showDeleteModal = false">
+        <div class="text-center space-y-4">
+          <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-2">
+            <AlertTriangle class="w-8 h-8 text-red-500" />
+          </div>
+          <h3 class="text-lg font-bold text-slate-900">Tem certeza?</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">
+            Você está prestes a excluir esta instituição. <br>
+            Essa ação <strong>não pode ser desfeita</strong>.
+          </p>
+          
+          <div class="flex gap-3 pt-4">
             <button 
-              type="button" 
-              @click="showModal = false" 
-              class="flex-1 h-10 rounded-md border border-slate-300 font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              @click="showDeleteModal = false" 
+              class="flex-1 h-11 rounded-md border border-slate-300 font-bold text-slate-700 hover:bg-slate-50 transition-colors"
             >
               Cancelar
             </button>
             <button 
-              type="submit" 
-              :disabled="isSaving || !formData.nome" 
-              class="flex-1 h-10 rounded-md bg-[#be123c] text-white font-bold hover:bg-[#9f1239] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm"
+              @click="executeDelete" 
+              :disabled="isDeleting"
+              class="flex-1 h-11 rounded-md bg-red-600 text-white font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
             >
-              <Loader2 v-if="isSaving" class="w-4 h-4 animate-spin" />
-              <span v-else>{{ isEditing ? 'Salvar Alterações' : 'Criar Instituição' }}</span>
+              <Loader2 v-if="isDeleting" class="w-4 h-4 animate-spin" />
+              <span v-else>Sim, Excluir</span>
             </button>
           </div>
-
-        </form>
+        </div>
       </Modal>
 
     </div>

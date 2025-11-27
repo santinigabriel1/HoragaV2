@@ -9,6 +9,8 @@ import * as responses from '../utils/responses.js';
  * @returns {Promise<Object>} Retorna a instituição cadastrada ou um erro.
  */
 export const cadastrar = async (req, res) => {
+    console.log("Chegou no controller de cadastrar horário");
+    console.log("Corpo da requisição:", req.body);
     try {
         const { fk_instituicao_id, descricao, horario } = req.body;
 

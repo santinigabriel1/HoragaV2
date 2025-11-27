@@ -1,9 +1,9 @@
 USE agendamento;
 
 -- 1. Instituições (Não depende de nada)
-INSERT INTO Instituicoes (nome, descricao) VALUES
-('Etec Tietê', 'Instituição de ensino técnico'),
-('Fatec Tatuí', 'Instituição de ensino superior');
+-- INSERT INTO Instituicoes (nome, descricao) VALUES
+-- ('Etec Tietê', 'Instituição de ensino técnico'),
+-- ('Fatec Tatuí', 'Instituição de ensino superior');
 
 -- 2. Usuários (Não depende de nada)
 INSERT INTO Usuarios (nome, email, senha, cargo) VALUES
@@ -12,16 +12,16 @@ INSERT INTO Usuarios (nome, email, senha, cargo) VALUES
 ('Joao Souza', 'joao@gmail.com', '$2b$10$afbzMqlv1VvmDhsq.rKa0OgGu8H.BCM30iBE2uKD40Vn4iYSn8ydO', 'Aluno');
 
 -- 3. Relacionamento usuário-instituição (Depende de Instituicoes e Usuarios)
-INSERT INTO InstituicaoUsuario (fk_instituicao_id, fk_usuario_id) VALUES
-(1, 1),
-(1, 2),
-(2, 3);
+-- INSERT INTO InstituicaoUsuario (fk_instituicao_id, fk_usuario_id) VALUES
+-- (1, 1),
+-- (1, 2),
+-- (2, 3);
 
 -- 4. Salas (Depende de Instituicoes)
-INSERT INTO Salas (fk_instituicao_id, nome, descricao) VALUES
-(1, 'Laboratório 1', 'Laboratório de informática'),
-(1, 'Auditório', 'Auditório principal da instituição'),
-(2, 'Sala 201', 'Sala de reuniões da instituição');
+-- INSERT INTO Salas (fk_instituicao_id, nome, descricao) VALUES
+-- (1, 'Laboratório 1', 'Laboratório de informática'),
+-- (1, 'Auditório', 'Auditório principal da instituição'),
+-- (2, 'Sala 201', 'Sala de reuniões da instituição');
 
 -- 5. Horarios (Depende de Instituicoes) 
 -- (MOVIDO PARA CIMA)

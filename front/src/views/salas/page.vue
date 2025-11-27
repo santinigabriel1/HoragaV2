@@ -2,25 +2,32 @@
 import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  DoorOpen, Plus, Pencil, Trash2, Loader2, Building2 
+  DoorOpen, Plus, Pencil, Trash2, Loader2, Building2, AlertTriangle 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import Modal from '@/components/ui/Modal.vue'
 import api from '@/services/api'
+import { useNotificationStore } from '@/stores/notification' // 1. Importar Store
 
 const router = useRouter()
+const notification = useNotificationStore() // 2. Inicializar
+
 const sidebarOpen = ref(false)
 const isLoading = ref(true)
 const isSaving = ref(false)
+const isDeleting = ref(false)
 
 // Dados
 const rooms = ref<any[]>([])
-const institutions = ref<any[]>([]) // Lista para o select
+const institutions = ref<any[]>([])
 
-// Estado do Modal
+// Estado dos Modais
 const showModal = ref(false)
+const showDeleteModal = ref(false) // Novo Modal
 const isEditing = ref(false)
+const itemToDelete = ref<number | null>(null) // ID para excluir
+
 const formData = reactive({
   id: null as number | null,
   nome: '',
@@ -32,29 +39,17 @@ const formData = reactive({
 
 const fetchData = async () => {
   isLoading.value = true
-  
-  // 1. Buscar Instituições (Essencial para o Select)
   try {
-    console.log('Buscando instituições...')
-    const resInst = await api.get('/instituicoes')
-    console.log('Instituições encontradas:', resInst.data)
+    const [resRooms, resInst] = await Promise.all([
+      api.get('/salas'),
+      api.get('/instituicoes')
+    ])
 
-    if (resInst.data.success) {
-      // O backend retorna [{ id: 1, nome: '...', ... }]
-      institutions.value = resInst.data.data
-    }
-  } catch (error) {
-    console.error('Erro crítico ao buscar instituições:', error)
-  }
+    if (resRooms.data.success) rooms.value = resRooms.data.data
+    if (resInst.data.success) institutions.value = resInst.data.data
 
-  // 2. Buscar Salas
-  try {
-    const resRooms = await api.get('/salas')
-    if (resRooms.data.success) {
-      rooms.value = resRooms.data.data
-    }
   } catch (error) {
-    console.error('Erro ao buscar salas (pode estar vazia):', error)
+    console.error('Erro ao carregar dados:', error)
   } finally {
     isLoading.value = false
   }
@@ -65,14 +60,11 @@ const openCreateModal = () => {
   formData.id = null
   formData.nome = ''
   formData.descricao = ''
-  
-  // Tenta selecionar a primeira instituição automaticamente se houver
   if (institutions.value.length > 0) {
     formData.fk_instituicao_id = institutions.value[0].id
   } else {
     formData.fk_instituicao_id = ''
   }
-  
   showModal.value = true
 }
 
@@ -86,7 +78,10 @@ const openEditModal = (room: any) => {
 }
 
 const handleSave = async () => {
-  if (!formData.fk_instituicao_id) return alert('Selecione uma instituição!')
+  if (!formData.fk_instituicao_id) {
+    notification.showError('Selecione uma instituição!')
+    return
+  }
   
   isSaving.value = true
   try {
@@ -94,10 +89,9 @@ const handleSave = async () => {
       // PATCH
       await api.patch(`/sala/${formData.id}`, {
         nome: formData.nome,
-        descricao: formData.descricao,
-        fk_instituicao_id: formData.fk_instituicao_id
+        descricao: formData.descricao
       })
-      alert('Sala atualizada!')
+      notification.showSuccess('Sala atualizada com sucesso!', () => fetchData())
     } else {
       // POST
       await api.post('/sala', {
@@ -105,30 +99,38 @@ const handleSave = async () => {
         descricao: formData.descricao,
         fk_instituicao_id: formData.fk_instituicao_id
       })
-      alert('Sala criada com sucesso!')
+      notification.showSuccess('Sala criada com sucesso!', () => fetchData())
     }
     showModal.value = false
-    fetchData()
   } catch (error: any) {
-    console.error(error)
-    alert('Erro: ' + (error.response?.data?.message || error.message))
+    notification.showError('Erro: ' + (error.response?.data?.message || error.message))
   } finally {
     isSaving.value = false
   }
 }
 
-const handleDelete = async (id: number) => {
-  if (!confirm('Deseja excluir esta sala?')) return
+// --- NOVA LÓGICA DE EXCLUSÃO ---
+const confirmDelete = (id: number) => {
+  itemToDelete.value = id
+  showDeleteModal.value = true
+}
+
+const executeDelete = async () => {
+  if (!itemToDelete.value) return
+  isDeleting.value = true
+  
   try {
-    await api.delete(`/sala/${id}`)
-    alert('Sala removida.')
-    fetchData()
+    await api.delete(`/sala/${itemToDelete.value}`)
+    showDeleteModal.value = false
+    notification.showSuccess('Sala removida.', () => fetchData())
   } catch (error: any) {
-    alert('Erro ao excluir: ' + (error.response?.data?.message || error.message))
+    showDeleteModal.value = false
+    notification.showError('Erro ao excluir: ' + (error.response?.data?.message || error.message))
+  } finally {
+    isDeleting.value = false
   }
 }
 
-// Função auxiliar para mostrar o nome da instituição na lista
 const getInstName = (id: number) => {
   const inst = institutions.value.find(i => i.id === id)
   return inst ? inst.nome : 'ID ' + id
@@ -182,7 +184,7 @@ onMounted(() => {
                 </div>
                 <div class="flex gap-1">
                   <button @click="openEditModal(room)" class="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Pencil class="w-4 h-4" /></button>
-                  <button @click="handleDelete(room.id)" class="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 class="w-4 h-4" /></button>
+                  <button @click="confirmDelete(room.id)" class="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 class="w-4 h-4" /></button>
                 </div>
               </div>
               <div class="p-5 flex-1">
@@ -200,35 +202,58 @@ onMounted(() => {
             <label class="block text-sm font-medium text-slate-700 mb-1">Nome da Sala</label>
             <input v-model="formData.nome" type="text" required class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Ex: Laboratório 01" />
           </div>
-          
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Pertence à Instituição</label>
-            <select 
-              v-model="formData.fk_instituicao_id" 
-              class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none bg-white disabled:bg-slate-100"
-            >
+            <select v-model="formData.fk_instituicao_id" :disabled="isEditing" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none bg-white disabled:bg-slate-100">
               <option value="" disabled>Selecione...</option>
               <option v-for="inst in institutions" :key="inst.id" :value="inst.id">
                 {{ inst.nome }}
               </option>
             </select>
-            <p v-if="institutions.length === 0" class="text-xs text-red-500 mt-1">
-              Nenhuma instituição encontrada. Cadastre uma primeiro.
-            </p>
+            <p v-if="institutions.length === 0" class="text-xs text-red-500 mt-1">Nenhuma instituição encontrada.</p>
           </div>
-
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Descrição</label>
             <textarea v-model="formData.descricao" rows="3" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Equipamentos, capacidade..."></textarea>
           </div>
-
           <div class="flex justify-end gap-3 pt-2">
             <button type="button" @click="showModal = false" class="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-md">Cancelar</button>
-            <button type="submit" :disabled="isSaving" class="px-4 py-2 bg-[#be123c] text-white rounded-md hover:bg-[#9f1239] disabled:opacity-50">
-              {{ isSaving ? 'Salvando...' : 'Salvar' }}
+            <button type="submit" :disabled="isSaving" class="px-4 py-2 bg-[#be123c] text-white rounded-md hover:bg-[#9f1239] disabled:opacity-50 flex items-center gap-2">
+              <Loader2 v-if="isSaving" class="w-4 h-4 animate-spin" />
+              <span>{{ isSaving ? 'Salvando...' : 'Salvar' }}</span>
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal :is-open="showDeleteModal" title="Excluir Sala" @close="showDeleteModal = false">
+        <div class="text-center space-y-4">
+          <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-2">
+            <AlertTriangle class="w-8 h-8 text-red-500" />
+          </div>
+          <h3 class="text-lg font-bold text-slate-900">Tem certeza?</h3>
+          <p class="text-sm text-slate-500 leading-relaxed">
+            Você está prestes a excluir esta sala. <br>
+            Isso pode afetar agendamentos futuros.
+          </p>
+          
+          <div class="flex gap-3 pt-4">
+            <button 
+              @click="showDeleteModal = false" 
+              class="flex-1 h-11 rounded-md border border-slate-300 font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button 
+              @click="executeDelete" 
+              :disabled="isDeleting"
+              class="flex-1 h-11 rounded-md bg-red-600 text-white font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+            >
+              <Loader2 v-if="isDeleting" class="w-4 h-4 animate-spin" />
+              <span v-else>Sim, Excluir</span>
+            </button>
+          </div>
+        </div>
       </Modal>
 
     </div>

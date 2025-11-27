@@ -7,11 +7,13 @@ import {
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import api from '@/services/api'
+import { useNotificationStore } from '@/stores/notification'  
 
 const router = useRouter()
 const sidebarOpen = ref(false)
 const isSaving = ref(false)
 const isLoading = ref(false)
+const notificationStore = useNotificationStore()
 
 const rooms = ref<any[]>([])
 const selectedRoomId = ref<string | number>('')
@@ -100,11 +102,11 @@ const handleSave = async () => {
 
     const { data } = await api.post(`/sala/editar_horario/${selectedRoomId.value}`, payload)
     if (data.success) {
-      alert('Grade salva com sucesso!')
+      notificationStore.showSuccess('Horários salvos com sucesso!')
       loadSchedule(selectedRoomId.value)
     }
   } catch (error: any) {
-    alert('Erro ao salvar: ' + (error.response?.data?.message || error.message))
+    notificationStore.showError('Erro ao salvar: ' + (error.response?.data?.message || error.message))
   } finally { isSaving.value = false }
 }
 
