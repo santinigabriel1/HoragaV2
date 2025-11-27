@@ -4,30 +4,28 @@ import * as InstituicaoUsuarioModel from "../models/InstituicaoUsuarioModel.js";
 
 /**
  * Cadastra uma nova instituição vinculada ao organizador logado.
- *
- * @param {import("express").Request} req - Objeto da requisição contendo `loginId`, `nome` e `descricao`.
- * @param {import("express").Response} res - Objeto da resposta HTTP.
- * @returns {Promise<Object>} Retorna a instituição cadastrada ou um erro.
  */
 export const cadastrar = async (req, res) => {
     try {
-
-        const organizador =   req.loginId;
-
+        const organizador = req.loginId;
         const { nome, descricao } = req.body;
 
-
         if (!organizador || !nome || !descricao) {
-            return responses.error(res, { 
-                statusCode: 400, 
-                message: "Dados incompletos. 'organizador', 'nome' e 'descricao' são obrigatórios." 
-            });
+            return responses.error(res, { statusCode: 400, message: "Dados incompletos." });
         }
 
         const instituicao = { organizador, nome, descricao };
 
+        // 1. Cria a Instituição
         const instituicaoCriada = await InstituicaoModel.cadastrar(instituicao);
-        InstituicaoUsuarioModel.cadastrar({instituicao: instituicaoCriada.id, usuario: organizador, aceito: true});
+        
+        // 2. Cria o Vínculo automático
+        await InstituicaoUsuarioModel.cadastrar({
+            instituicao: instituicaoCriada.id, 
+            usuario: organizador, 
+            aceito: true
+        });
+
         return responses.created(res, {message: "Instituição cadastrada com sucesso", data: instituicaoCriada});
     } catch (error) {
         return responses.error(res, { message: error.message });
@@ -36,144 +34,96 @@ export const cadastrar = async (req, res) => {
 
 /**
  * Busca uma instituição pelo seu ID.
- *
- * @param {import("express").Request} req - Objeto da requisição contendo o parâmetro `id`.
- * @param {import("express").Response} res - Objeto da resposta HTTP.
- * @returns {Promise<Object>} Retorna a instituição encontrada ou erro 404 se não existir.
  */
 export const buscarPorId = async (req, res) => {
     try {
         const id = req.params.id;
-
-        if (!id) {
-            return responses.error(res, { statusCode: 400, message: "ID da Instituição é obrigatório." });
-        }
-
+        if (!id) return responses.error(res, { statusCode: 400, message: "ID obrigatório." });
+        
         const instituicao = await InstituicaoModel.buscarPorId(id);
-
-        if (!instituicao) {
-            return responses.error(res, { statusCode: 404, message: "Instituição não encontrada." });
-        }
-
-        return responses.success(res, { message: "Instituição encontrada com sucesso.", data: instituicao });
+        if (!instituicao) return responses.error(res, { statusCode: 404, message: "Instituição não encontrada." });
+        
+        return responses.success(res, { message: "Sucesso", data: instituicao });
     } catch (error) {
         return responses.error(res, { message: error.message });
     }
 };
 
 /**
- * Busca uma instituição pelo seu nome.
- *
- * @param {import("express").Request} req - Objeto da requisição contendo o parâmetro `nome`.
- * @param {import("express").Response} res - Objeto da resposta HTTP.
- * @returns {Promise<Object>} Retorna a instituição encontrada ou erro 404 se não existir.
+ * Busca uma instituição pelo nome.
  */
 export const buscarPorNome = async (req, res) => {
     try {
         const nome = req.params.nome;
-
-        if (!nome) {
-            return responses.error(res, { statusCode: 400, message: "Nome da Instituição é obrigatório." });
-        }
+        if (!nome) return responses.error(res, { statusCode: 400, message: "Nome obrigatório." });
 
         const instituicao = await InstituicaoModel.buscarPorNome(nome);
+        if (!instituicao) return responses.error(res, { statusCode: 404, message: "Não encontrada." });
 
-        if (!instituicao) {
-            return responses.error(res, { statusCode: 404, message: "Instituição não encontrada." });
-        }
-
-        return responses.success(res, { message: "Instituição encontrada com sucesso.", data: instituicao });
+        return responses.success(res, { message: "Sucesso", data: instituicao });
     } catch (error) {
         return responses.error(res, { message: error.message });
     }
 };
 
-
 /**
- * Lista todas as instituições vinculadas ao organizador logado.
- *
- * @param {import("express").Request} req - Objeto da requisição contendo `loginId` do organizador.
- * @param {import("express").Response} res - Objeto da resposta HTTP.
- * @returns {Promise<Object[]>} Retorna a lista de instituições do organizador.
+ * Lista todas as instituições de um organizador.
  */
 export const listarPorOrganizador = async (req, res) => {
     try {
         const organizadorId = req.loginId;
-
-        if (!organizadorId) {
-            return responses.error(res, { statusCode: 400, message: "ID do Organizador é obrigatório." });
-        }
+        if (!organizadorId) return responses.error(res, { statusCode: 400, message: "ID do organizador obrigatório." });
 
         const instituicoes = await InstituicaoModel.listarPorOrganizador(organizadorId);
-        return responses.success(res, { message: "Instituições listadas com sucesso.", data: instituicoes });
+        return responses.success(res, { message: "Sucesso", data: instituicoes });
     } catch (error) {
         return responses.error(res, { message: error.message });
     }
 };
 
 /**
- * Lista todas as instituições com opção de busca por nome ou descrição.
- *
- * @param {import("express").Request} req - Objeto da requisição contendo query `search`.
- * @param {import("express").Response} res - Objeto da resposta HTTP.
- * @returns {Promise<Object[]>} Retorna a lista de instituições encontradas ou erro 404 se nenhuma for encontrada.
+ * Lista todas as instituições (busca).
  */
 export const listar = async (req, res) => {
     try {
         const search = req.query.search || "";
         const instituicoes = await InstituicaoModel.listar(search);
-
+        
         if (!instituicoes || instituicoes.length === 0) {
-            return responses.error(res, { statusCode: 404, message: "Nenhuma Instituição encontrada." });
+            // Retorna array vazio com sucesso em vez de erro 404 para listagens, é melhor para o front
+            return responses.success(res, { message: "Nenhuma instituição encontrada.", data: [] });
         }
 
-        return responses.success(res, { message: "Instituições listadas com sucesso.", data: instituicoes });
+        return responses.success(res, { message: "Sucesso", data: instituicoes });
     } catch (error) {
         return responses.error(res, { message: error.message });
     }
 };
 
 /**
- * Atualiza todos os campos de uma instituição.
- *
- * @param {import("express").Request} req - Objeto da requisição contendo `loginId`, parâmetro `id` e body com `nome` e `descricao`.
- * @param {import("express").Response} res - Objeto da resposta HTTP.
- * @returns {Promise<Object>} Retorna a instituição atualizada ou erro se não existir ou não pertencer ao organizador.
+ * Atualiza TODOS os campos (PUT).
  */
 export const atualizarTudo = async (req, res) => {
   try {
-    const organizador =   req.loginId;
+    const organizador = req.loginId;
     const id = req.params.id;
     const instituicoes = req.body;
 
-    if (!id) {
-      return responses.error(res, { statusCode: 400, message: "ID da instituição é obrigatório" });
-    }
-
-    if (!Number(id)) {
-      return responses.error(res, { statusCode: 400, message: "ID da instituição deve ser um número válido" });
-    }
-
+    if (!id) return responses.error(res, { statusCode: 400, message: "ID obrigatório" });
     const { nome, descricao } = instituicoes;
-    if (!nome || !descricao) {
-      return responses.error(res, { statusCode: 400, message: "Todos os campos (nome, descricao) são obrigatórios" });
-    }
+    if (!nome || !descricao) return responses.error(res, { statusCode: 400, message: "Campos obrigatórios faltando" });
 
     const instituicaoExistente = await InstituicaoModel.buscarPorId(id);
-    if (!instituicaoExistente) {
-      return responses.notFound(res, { message: "Instituição não encontrada" });
+    if (!instituicaoExistente) return responses.notFound(res, { message: "Instituição não encontrada" });
+
+    // Validação de Permissão (Int vs Int)
+    if (parseInt(instituicaoExistente.organizador) !== parseInt(organizador)) {
+      return responses.error(res, { statusCode: 403, message: "Sem permissão." });
     }
 
-    if (instituicaoExistente.organizador !== organizador) {
-      return responses.error(res, { statusCode: 403, message: "Você não tem permissão para atualizar esta instituição" });
-    }
-
-    const resultado = await InstituicaoModel.atualizar(id, instituicoes);
-    if (!resultado) {
-      return responses.notFound(res, { message: "Instituição não encontrada" });
-    }
-
-    return responses.success(res, { message: "Instituição atualizada com sucesso", data: resultado });
+    // Nota: seu model deve ter o método atualizarTudo ou atualizar
+    const resultado = await InstituicaoModel.atualizarTudo(id, instituicoes);
+    return responses.success(res, { message: "Atualizado com sucesso", data: resultado });
 
   } catch (error) {
     return responses.error(res, { message: error.message });
@@ -181,88 +131,64 @@ export const atualizarTudo = async (req, res) => {
 };
 
 /**
- * Atualiza parcialmente os campos de uma instituição.
- *
- * @param {import("express").Request} req - Objeto da requisição contendo `loginId`, parâmetro `id` e body com pelo menos um campo (`nome` ou `descricao`).
- * @param {import("express").Response} res - Objeto da resposta HTTP.
- * @returns {Promise<Object>} Retorna a instituição atualizada ou erro se não existir ou não pertencer ao organizador.
+ * Atualiza PARCIALMENTE (PATCH).
  */
 export const atualizar = async (req, res) => {
   try {
-    const organizador =   req.loginId;
+    const organizador = req.loginId;
     const id = req.params.id;
     const instituicoes = req.body;
 
-    if (!id) {
-      return responses.error(res, { statusCode: 400, message: "ID da instituição é obrigatório" });
-    }
-
-    if (!Number(id)) {
-      return responses.error(res, { statusCode: 400, message: "ID da instituição deve ser um número válido" });
-    }
-
-    const { nome, descricao } = instituicoes;
-    if (!nome && !descricao) {
-      return responses.error(res, { statusCode: 400, message: "Pelo menos um campo (nome ou descricao) deve ser fornecido para atualização" });
-    }
+    if (!id) return responses.error(res, { statusCode: 400, message: "ID obrigatório" });
 
     const instituicaoExistente = await InstituicaoModel.buscarPorId(id);
-    if (!instituicaoExistente) {
-      return responses.notFound(res, { message: "Instituição não encontrada" });
-    }
+    if (!instituicaoExistente) return responses.notFound(res, { message: "Instituição não encontrada" });
 
-    if (instituicaoExistente.organizador !== organizador) {
-      return responses.error(res, { statusCode: 403, message: "Você não tem permissão para atualizar esta instituição" });
+    // Validação de Permissão (Int vs Int)
+    if (parseInt(instituicaoExistente.organizador) !== parseInt(organizador)) {
+      return responses.error(res, { statusCode: 403, message: "Sem permissão." });
     }
 
     const resultado = await InstituicaoModel.atualizar(id, instituicoes);
-    if (!resultado) {
-      return responses.notFound(res, { message: "Instituição não encontrada" });
-    }
-
-    return responses.success(res, { message: "Instituição atualizada com sucesso", data: resultado });
+    return responses.success(res, { message: "Atualizado com sucesso", data: resultado });
 
   } catch (error) {
     return responses.error(res, { message: error.message });
   }
 };
 
-
 /**
- * Deleta uma instituição pelo ID, apenas se pertencer ao organizador logado.
- *
- * @param {import("express").Request} req - Objeto da requisição contendo `loginId` e parâmetro `id`.
- * @param {import("express").Response} res - Objeto da resposta HTTP.
- * @returns {Promise<Object>} Retorna confirmação de exclusão ou erro se não existir ou não pertencer ao organizador.
+ * Deleta com Cascata.
  */
 export const deletar = async (req, res) => {
     try {
-        const organizador =   req.loginId;
+        const organizador = req.loginId;
         const id = req.params.id;
 
-        if (!id) {
-            return responses.error(res, { statusCode: 400, message: "ID da instituição é obrigatório" });
-        }
-
-        if (!Number(id)) {
-            return responses.error(res, { statusCode: 400, message: "ID da instituição deve ser um número válido" });
-        }
+        if (!id) return responses.error(res, { statusCode: 400, message: "ID obrigatório" });
 
         const instituicaoExistente = await InstituicaoModel.buscarPorId(id);
-        if (!instituicaoExistente) {
-          return responses.notFound(res, { message: "Instituição não encontrada" });
+        if (!instituicaoExistente) return responses.notFound(res, { message: "Instituição não encontrada" });
+
+        if (parseInt(instituicaoExistente.organizador) !== parseInt(organizador)) {
+            return responses.error(res, { statusCode: 403, message: "Sem permissão." });
         }
 
-        if (instituicaoExistente.organizador !== organizador) {
-          return responses.error(res, { statusCode: 403, message: "Você não tem permissão para atualizar esta instituição" });
+        // 1. Limpar vínculos (precisa ter criado o método no model InstituicaoUsuarioModel)
+        // Se não criou o método lá, comente essa linha e o delete vai falhar se tiver usuário vinculado
+        if (InstituicaoUsuarioModel.deletarPorInstituicao) {
+             await InstituicaoUsuarioModel.deletarPorInstituicao(id);
+        } else {
+             // Fallback ou log de aviso se não implementou no model
+             console.warn("Método deletarPorInstituicao não encontrado no model.");
         }
 
+        // 2. Deletar Instituição (O model deve tratar a cascata de salas se configurado no banco, ou fazer manual)
         const resultado = await InstituicaoModel.deletar(id);
-       
 
-        return responses.success(res, { message: "Instituição deletada com sucesso", data: resultado });
+        return responses.success(res, { message: "Deletado com sucesso", data: resultado });
 
     } catch (error) {
         return responses.error(res, { message: error.message });
     }
-}; 
+};

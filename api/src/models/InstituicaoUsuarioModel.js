@@ -378,4 +378,25 @@ export const listarUsuarios = async (instituicao_id, cx = null) => {
     }
 };
 
-
+/**
+ * Deleta TODOS os vínculos de uma instituição específica.
+ * Usado antes de deletar a própria instituição.
+ */
+export const deletarPorInstituicao = async (instituicaoId, cx = null) => {
+    let localCx = cx;
+    try {
+        if (!localCx) {
+            localCx = await pool.getConnection();
+        }
+        // Apaga todos os registros onde a fk_instituicao_id for igual ao ID
+        const query = "DELETE FROM InstituicaoUsuario WHERE fk_instituicao_id = ?";
+        await localCx.execute(query, [instituicaoId]);
+        return true;
+    } catch (error) {
+        throw new Error("Erro ao limpar vínculos da instituição: " + error.message);
+    } finally {
+        if (!cx && localCx) {
+            localCx.release();
+        }
+    }
+};
