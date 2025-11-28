@@ -7,13 +7,16 @@ import {
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import api from '@/services/api'
-import { useNotificationStore } from '@/stores/notification'  
+import { useNotificationStore } from '@/stores/notification' 
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const sidebarOpen = ref(false)
 const isSaving = ref(false)
 const isLoading = ref(false)
 const notificationStore = useNotificationStore()
+const authStore = useAuthStore()
+
 
 const rooms = ref<any[]>([])
 const selectedRoomId = ref<string | number>('')
@@ -54,12 +57,32 @@ const weeklySchedule = ref([
 
 const fetchRooms = async () => {
   try {
-    const { data } = await api.get('/salas')
-    if (data.success && data.data.length > 0) {
-      rooms.value = data.data
-      selectedRoomId.value = data.data[0].id
+    const [resRooms, resInst] = await Promise.all([
+      api.get('/salas'),
+      api.get('/instituicoes')
+    ])
+    
+    const userId = String(authStore.user?.id)
+
+    // Identifica minhas instituições
+    const myInstIds = new Set<number>()
+    if (resInst.data.success) {
+      resInst.data.data.forEach((inst: any) => {
+        if (String(inst.organizador) === userId) myInstIds.add(inst.id)
+      })
     }
-  } catch (error) { console.error(error) }
+
+    // Filtra salas
+    if (resRooms.data.success) {
+      rooms.value = resRooms.data.data.filter((room: any) => myInstIds.has(room.fk_instituicao_id))
+      
+      if (rooms.value.length > 0) {
+        selectedRoomId.value = rooms.value[0].id
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao buscar salas:', error)
+  }
 }
 
 const loadSchedule = async (id: number | string) => {
