@@ -20,6 +20,10 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       host: true,
+      allowedHosts: [
+        'horaga.com.br',
+        'www.horaga.com.br'
+      ],
       proxy: {
         '/api': {
           target: env.API_URL,
