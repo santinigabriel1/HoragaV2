@@ -89,23 +89,52 @@ const openEditModal = (inst: any) => {
 const handleSave = async () => {
   isSaving.value = true
   try {
-    // Garante que o organizador é o usuário logado
+    // Payload
     const payload = {
       nome: formData.nome,
       descricao: formData.descricao,
       organizador: authStore.user?.id 
     }
 
+    console.log('1. Enviando payload:', payload)
+
+    let response
     if (isEditing.value && formData.id) {
-      await api.patch(`/instituicao/${formData.id}`, payload)
-      notification.showSuccess('Atualizado com sucesso!', () => fetchInstitutions())
+      response = await api.patch(`/instituicao/${formData.id}`, payload)
     } else {
-      await api.post('/instituicao', payload)
-      notification.showSuccess('Criado com sucesso!', () => fetchInstitutions())
+      response = await api.post('/instituicao', payload)
+    }
+
+    // --- O DIAGNÓSTICO (Olhe isso no F12) ---
+    console.log('2. Resposta COMPLETA:', response)
+    console.log('3. Status:', response.status)
+    console.log('4. Data:', response.data)
+
+    // --- A CORREÇÃO ROBUSTA ---
+    // Agora aceitamos se tiver 'success: true' OU se o status HTTP for 200 (OK) ou 201 (Created)
+    const isSuccess = response.data?.success === true || response.status === 200 || response.status === 201
+
+    if (isSuccess) {
+      console.log('5. Entrou no bloco de SUCESSO')
+      
+      showModal.value = false // Fecha o modal do formulário primeiro
+      
+      notification.showSuccess(
+        isEditing.value ? 'Atualizado com sucesso!' : 'Criado com sucesso!', 
+        () => {
+           console.log('6. Executando Reload...')
+           window.location.reload() // Força o reload bruto para garantir
+        }
+      )
+    } else {
+      console.warn('7. Entrou no bloco de FALHA LÓGICA (Backend não devolveu sucesso explícito)')
+      // Força um erro para cair no catch se o status não for de sucesso
+      throw new Error(response.data?.message || 'O servidor respondeu, mas sem confirmação de sucesso.')
     }
     
-    showModal.value = false
   } catch (error: any) {
+    console.error('X. Erro capturado:', error)
+    showModal.value = false 
     notification.showError('Erro: ' + (error.response?.data?.message || error.message))
   } finally {
     isSaving.value = false

@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
-// Outros imports globais...
+import SuccessModal from '@/components/ui/SuccessModal.vue' 
 </script>
 
 <template>
+  <SuccessModal />
+  
   <RouterView />
-  </template>
+</template>
+
+<style>
+body, html {
+  height: 100%;
+  margin: 0;
+}
+</style>
