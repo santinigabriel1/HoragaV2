@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   Building2, MapPin, MoreVertical, Plus, Search, CheckCircle2, 
@@ -21,9 +21,8 @@ const searchQuery = ref('')
 const isLoading = ref(true)
 const isSaving = ref(false)
 const isDeleting = ref(false)
-const institutions = ref<any[]>([])
+const institutions = ref<any[]>([]) // Lista Local Reativa
 
-// Estados de Modal
 const showModal = ref(false)
 const showDeleteModal = ref(false)
 const isEditing = ref(false)
@@ -35,29 +34,34 @@ const formData = reactive({
   descricao: ''
 })
 
-// --- ACTIONS ---
+const canManage = (inst: any) => {
+  if (!authStore.user) return false
+  const userId = Number(authStore.user.id)
+  const ownerId = Number(inst.managerId)
+  const userRole = authStore.user.cargo || ''
+  return userId === ownerId || userRole === 'Administrador'
+}
 
+// --- BUSCA INICIAL (SÓ RODA UMA VEZ) ---
 const fetchInstitutions = async () => {
   isLoading.value = true
   try {
     const { data } = await api.get('/instituicoes')
     
     if (data.success && authStore.user) {
-      // SOLUÇÃO PONTO 1: Filtragem no Frontend
-      // Só mostra instituições onde o organizador é o usuário logado
       const userId = Number(authStore.user.id)
-
+      
+      // Filtra apenas as minhas
       const myInstitutions = data.data.filter((inst: any) => {
         return Number(inst.organizador) === userId
       })
 
-      // Mapeia os dados
+      // Mapeia para o formato visual
       institutions.value = myInstitutions.map((inst: any) => ({
         id: inst.id,
         name: inst.nome,
         description: inst.descricao,
         managerId: inst.organizador,
-        // Como filtrei pelo meu ID, o gestor sou eu
         managerName: authStore.user?.nome || 'Eu', 
         status: 'active'
       }))
@@ -86,62 +90,64 @@ const openEditModal = (inst: any) => {
   showModal.value = true
 }
 
+// --- SALVAR COM ATUALIZAÇÃO LOCAL (SEM RELOAD) ---
 const handleSave = async () => {
   isSaving.value = true
   try {
-    // Payload
     const payload = {
       nome: formData.nome,
       descricao: formData.descricao,
       organizador: authStore.user?.id 
     }
 
-    console.log('1. Enviando payload:', payload)
-
     let response
     if (isEditing.value && formData.id) {
+      // EDITAR
       response = await api.patch(`/instituicao/${formData.id}`, payload)
-    } else {
-      response = await api.post('/instituicao', payload)
-    }
-
-    // --- O DIAGNÓSTICO (Olhe isso no F12) ---
-    console.log('2. Resposta COMPLETA:', response)
-    console.log('3. Status:', response.status)
-    console.log('4. Data:', response.data)
-
-    // --- A CORREÇÃO ROBUSTA ---
-    // Agora aceitamos se tiver 'success: true' OU se o status HTTP for 200 (OK) ou 201 (Created)
-    const isSuccess = response.data?.success === true || response.status === 200 || response.status === 201
-
-    if (isSuccess) {
-      console.log('5. Entrou no bloco de SUCESSO')
       
-      showModal.value = false // Fecha o modal do formulário primeiro
-      
-      notification.showSuccess(
-        isEditing.value ? 'Atualizado com sucesso!' : 'Criado com sucesso!', 
-        () => {
-           console.log('6. Executando Reload...')
-           window.location.reload() // Força o reload bruto para garantir
+      if (response.data.success || response.status === 200) {
+        // Atualiza o item específico na lista local
+        const index = institutions.value.findIndex(i => i.id === formData.id)
+        if (index !== -1) {
+          institutions.value[index].name = formData.nome
+          institutions.value[index].description = formData.descricao
         }
-      )
+        notification.showSuccess('Instituição atualizada!')
+      }
     } else {
-      console.warn('7. Entrou no bloco de FALHA LÓGICA (Backend não devolveu sucesso explícito)')
-      // Força um erro para cair no catch se o status não for de sucesso
-      throw new Error(response.data?.message || 'O servidor respondeu, mas sem confirmação de sucesso.')
+      // CRIAR
+      response = await api.post('/instituicao', payload)
+      
+      if (response.data.success || response.status === 201) {
+        // Adiciona o novo item na lista local
+        // O backend retorna o objeto criado em response.data.data
+        const newItem = response.data.data
+        
+        institutions.value.push({
+          id: newItem.id,
+          name: newItem.nome || formData.nome,
+          description: newItem.descricao || formData.descricao,
+          managerId: authStore.user?.id,
+          managerName: authStore.user?.nome,
+          status: 'active'
+        })
+        
+        notification.showSuccess('Instituição criada!')
+      }
     }
     
+    showModal.value = false // Fecha o modal
+
   } catch (error: any) {
-    console.error('X. Erro capturado:', error)
-    showModal.value = false 
+    console.error(error)
+    showModal.value = false
     notification.showError('Erro: ' + (error.response?.data?.message || error.message))
   } finally {
     isSaving.value = false
   }
 }
 
-// --- EXCLUSÃO ---
+// --- EXCLUSÃO COM REMOÇÃO LOCAL (SEM RELOAD) ---
 const confirmDelete = (id: number) => {
   itemToDelete.value = id
   showDeleteModal.value = true
@@ -153,14 +159,18 @@ const executeDelete = async () => {
   
   try {
     await api.delete(`/instituicao/${itemToDelete.value}`)
+    
+    // Remove da lista local filtrando pelo ID
+    institutions.value = institutions.value.filter(i => i.id !== itemToDelete.value)
+    
     showDeleteModal.value = false
-    notification.showSuccess('Removido com sucesso.', () => fetchInstitutions())
+    notification.showSuccess('Instituição removida.')
+
   } catch (error: any) {
     showDeleteModal.value = false
-    // SOLUÇÃO PONTO 2: Melhor feedback de erro
     const msg = error.response?.data?.message || error.message
     if (msg.includes('foreign key') || msg.includes('constraint')) {
-      notification.showError('Não é possível excluir: Existem salas vinculadas a esta instituição.')
+      notification.showError('Não é possível excluir: Existem salas vinculadas.')
     } else {
       notification.showError('Erro ao excluir: ' + msg)
     }
@@ -171,7 +181,9 @@ const executeDelete = async () => {
 
 const handleLogout = () => router.push('/login')
 
-onMounted(() => fetchInstitutions())
+onMounted(() => {
+  fetchInstitutions()
+})
 </script>
 
 <template>

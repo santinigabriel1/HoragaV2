@@ -21,7 +21,7 @@ const isSaving = ref(false)
 const isDeleting = ref(false)
 
 const rooms = ref<any[]>([])
-const myInstitutions = ref<any[]>([]) // Lista filtrada para o usuário
+const myInstitutions = ref<any[]>([]) 
 
 const showModal = ref(false)
 const showDeleteModal = ref(false)
@@ -35,60 +35,40 @@ const formData = reactive({
   fk_instituicao_id: '' as string | number
 })
 
+// --- BUSCA INICIAL ---
 const fetchData = async () => {
-  isLoading.value = true
+  // Só carrega se a lista estiver vazia para evitar flash
+  if (rooms.value.length === 0) isLoading.value = true
+  
   try {
-    const userId = authStore.user?.id
+    const [resRooms, resInst] = await Promise.all([
+      api.get('/salas'),
+      api.get('/instituicoes')
+    ])
 
-    // 1. Busca Instituições
-    const resInst = await api.get('/instituicoes')
-    
+    const userId = String(authStore.user?.id)
+
     if (resInst.data.success) {
-      // FILTRO CORRIGIDO: Converte ambos para String para garantir
       myInstitutions.value = resInst.data.data.filter((inst: any) => {
-        // Verifica se o campo organizador existe e se bate com o ID logado
-        return inst.organizador && String(inst.organizador) === String(userId)
+        if (!inst.organizador) return false
+        return String(inst.organizador) === userId
       })
     }
 
-    // 2. Busca Salas
-    const resRooms = await api.get('/salas')
     if (resRooms.data.success) {
       const allRooms = resRooms.data.data
-      // Cria lista de IDs das minhas escolas
       const myInstIds = new Set(myInstitutions.value.map(i => i.id))
-      
-      // Mostra sala se ela pertencer a uma das minhas escolas
       rooms.value = allRooms.filter((room: any) => myInstIds.has(room.fk_instituicao_id))
     }
 
   } catch (error) {
-    console.error('Erro:', error)
+    console.error('Erro ao carregar:', error)
   } finally {
     isLoading.value = false
   }
 }
 
-// --- RESTO DAS AÇÕES (Mantidas, apenas ajustando chamadas) ---
-
-const openCreateModal = () => {
-  isEditing.value = false
-  formData.id = null
-  formData.nome = ''
-  formData.descricao = ''
-  // SOLUÇÃO PONTO 3: O Select já vai pegar 'myInstitutions' que está preenchido
-  formData.fk_instituicao_id = myInstitutions.value.length > 0 ? myInstitutions.value[0].id : ''
-  showModal.value = true
-}
-
-const openEditModal = (room: any) => {
-  isEditing.value = true
-  formData.id = room.id
-  formData.nome = room.nome
-  formData.descricao = room.descricao
-  formData.fk_instituicao_id = room.fk_instituicao_id
-  showModal.value = true
-}
+// --- AÇÕES REATIVAS (SEM RELOAD) ---
 
 const handleSave = async () => {
   if (!formData.fk_instituicao_id) {
@@ -98,19 +78,35 @@ const handleSave = async () => {
   
   isSaving.value = true
   try {
+    const payload = {
+      nome: formData.nome,
+      descricao: formData.descricao,
+      fk_instituicao_id: formData.fk_instituicao_id
+    }
+
     if (isEditing.value && formData.id) {
-      await api.patch(`/sala/${formData.id}`, {
-        nome: formData.nome,
-        descricao: formData.descricao
-      })
-      notification.showSuccess('Sala atualizada!', () => fetchData())
+      // EDITAR
+      await api.patch(`/sala/${formData.id}`, payload)
+      
+      // Atualiza localmente
+      const index = rooms.value.findIndex(r => r.id === formData.id)
+      if (index !== -1) {
+        rooms.value[index].nome = formData.nome
+        rooms.value[index].descricao = formData.descricao
+        rooms.value[index].fk_instituicao_id = formData.fk_instituicao_id
+      }
+      notification.showSuccess('Sala atualizada com sucesso!')
+
     } else {
-      await api.post('/sala', {
-        nome: formData.nome,
-        descricao: formData.descricao,
-        fk_instituicao_id: formData.fk_instituicao_id
-      })
-      notification.showSuccess('Sala criada!', () => fetchData())
+      // CRIAR
+      const { data } = await api.post('/sala', payload)
+      
+      // Adiciona localmente
+      // Tenta pegar o objeto retornado ou cria um objeto visual com ID gerado (fallback)
+      const newRoom = data.data || { ...payload, id: Date.now() }
+      rooms.value.push(newRoom)
+      
+      notification.showSuccess('Sala criada com sucesso!')
     }
     showModal.value = false
   } catch (error: any) {
@@ -120,18 +116,17 @@ const handleSave = async () => {
   }
 }
 
-const confirmDelete = (id: number) => {
-  itemToDelete.value = id
-  showDeleteModal.value = true
-}
-
 const executeDelete = async () => {
   if (!itemToDelete.value) return
   isDeleting.value = true
   try {
     await api.delete(`/sala/${itemToDelete.value}`)
+    
+    // Remove localmente
+    rooms.value = rooms.value.filter(r => r.id !== itemToDelete.value)
+    
     showDeleteModal.value = false
-    notification.showSuccess('Sala removida.', () => fetchData())
+    notification.showSuccess('Sala removida.')
   } catch (error: any) {
     showDeleteModal.value = false
     notification.showError('Erro ao excluir: ' + (error.response?.data?.message || error.message))
@@ -140,25 +135,26 @@ const executeDelete = async () => {
   }
 }
 
-const getInstName = (id: number) => {
-  const inst = myInstitutions.value.find(i => i.id === id)
-  return inst ? inst.nome : 'Desconhecida'
+// --- Auxiliares ---
+const openCreateModal = () => {
+  isEditing.value = false
+  formData.id = null; formData.nome = ''; formData.descricao = ''
+  formData.fk_instituicao_id = myInstitutions.value.length > 0 ? myInstitutions.value[0].id : ''
+  showModal.value = true
 }
-
+const openEditModal = (room: any) => {
+  isEditing.value = true
+  formData.id = room.id; formData.nome = room.nome; formData.descricao = room.descricao; formData.fk_instituicao_id = room.fk_instituicao_id
+  showModal.value = true
+}
+const confirmDelete = (id: number) => { itemToDelete.value = id; showDeleteModal.value = true }
+const getInstName = (id: number) => { const inst = myInstitutions.value.find(i => i.id === id); return inst ? (inst.nome || inst.name) : '...' }
 const handleLogout = () => router.push('/login')
 
-onMounted(async () => {
-  // Pequeno delay para garantir que o Pinia carregou o usuário do localStorage
-  if (!authStore.user) {
-    // Tenta recarregar do storage se o pinia estiver vazio
-    const stored = localStorage.getItem('horaga_user')
-    if (stored) authStore.user = JSON.parse(stored)
-  }
-  
-  await fetchData()
+onMounted(() => {
+  fetchData()
 })
 </script>
-
 <template>
   <div class="flex h-screen bg-slate-50">
     <Sidebar :is-open="sidebarOpen" @close="sidebarOpen = false" @logout="handleLogout" />
@@ -172,7 +168,7 @@ onMounted(async () => {
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
               <h1 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Salas & Laboratórios</h1>
-              <p class="text-slate-500">Cadastre os espaços físicos (apenas das suas instituições).</p>
+              <p class="text-slate-500">Cadastre os espaços físicos disponíveis para reserva.</p>
             </div>
             <button @click="openCreateModal" class="flex items-center gap-2 bg-[#be123c] hover:bg-[#9f1239] text-white px-4 py-2.5 rounded-md font-bold transition-colors shadow-sm">
               <Plus class="w-5 h-5" /> Nova Sala
@@ -225,14 +221,18 @@ onMounted(async () => {
           
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Pertence à Instituição</label>
-            <select v-model="formData.fk_instituicao_id" :disabled="isEditing" class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none bg-white disabled:bg-slate-100">
+            <select 
+              v-model="formData.fk_instituicao_id" 
+              class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none bg-white disabled:bg-slate-100"
+            >
               <option value="" disabled>Selecione...</option>
               <option v-for="inst in myInstitutions" :key="inst.id" :value="inst.id">
-                {{ inst.nome }}
+                {{ inst.nome || inst.name || 'Instituição sem nome' }}
               </option>
+            
             </select>
             <p v-if="myInstitutions.length === 0" class="text-xs text-red-500 mt-1">
-              Você não possui instituições cadastradas.
+              Nenhuma instituição encontrada. Cadastre uma primeiro.
             </p>
           </div>
 
