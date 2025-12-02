@@ -139,7 +139,7 @@ const confirmCancel = async () => {
     recentReservations.value = recentReservations.value.filter(r => r.id !== bookingToCancel.value)
     
     // 3. Atualização do HEADER (Remove notificação sem reload)
-    window.dispatchEvent(new Event('booking:updated'))
+    window.dispatchEvent(new CustomEvent('booking:removed', { detail: bookingToCancel.value }))
 
     // 4. Feedback Visual
     showCancelModal.value = false

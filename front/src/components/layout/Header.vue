@@ -138,15 +138,22 @@ const handleUpdateProfile = async () => {
   }
 }
 
+const removeNotification = (event: Event) => {
+  const customEvent = event as CustomEvent
+  const idToRemove = customEvent.detail 
+
+  notifications.value = notifications.value.filter(n => n.id !== idToRemove)
+}
+
 // --- ESCUTANDO O EVENTO GLOBAL ---
 onMounted(() => {
   generateNotifications()
-  // Adiciona o ouvinte: Sempre que 'booking:updated' for disparado, roda generateNotifications
+  window.addEventListener('booking:removed', removeNotification)
   window.addEventListener('booking:updated', generateNotifications)
 })
 
 onUnmounted(() => {
-  // Limpeza de memória ao destruir o componente
+  window.removeEventListener('booking:removed', removeNotification)
   window.removeEventListener('booking:updated', generateNotifications)
 })
 </script>
