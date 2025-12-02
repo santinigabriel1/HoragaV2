@@ -22,17 +22,6 @@ const notifications = ref<any[]>([])
 
 // --- 1. NOTIFICAÇÕES INTELIGENTES ---
 const generateNotifications = async () => {
-  // Limpa array antes de recarregar para evitar duplicação visual momentânea
-  notifications.value = []
-  
-  // Notificação Fixa
-  notifications.value.push({
-    id: 'sys-1',
-    title: 'Manutenção Programada',
-    message: 'O sistema passará por atualização neste sábado às 22h.',
-    type: 'warning',
-    time: 'Aviso Geral'
-  })
 
   try {
     const { data } = await api.get('/agendamentos') 

@@ -44,15 +44,38 @@ const formatTime = (time: string) => time ? time.substring(0, 5) : ''
 const fetchData = async () => {
   isLoading.value = true
   try {
-    const resRooms = await api.get('/salas')
+    // 1. Buscamos SALAS e INSTITUIÇÕES ao mesmo tempo
+    const [resRooms, resInst] = await Promise.all([
+      api.get('/salas'),
+      api.get('/instituicoes')
+    ])
+
+    const userId = Number(authStore.user?.id)
+
+    // 2. Filtramos apenas as MINHAS instituições (onde sou organizador)
+    const myInstIds = new Set<number>()
+    if (resInst.data.success) {
+      resInst.data.data.forEach((inst: any) => {
+        if (Number(inst.organizador) === userId) {
+          myInstIds.add(inst.id)
+        }
+      })
+    }
+
+    // 3. Filtramos as salas que pertencem a essas instituições
     if (resRooms.data.success) {
-      classrooms.value = resRooms.data.data.map((sala: any) => ({
+      const allRooms = resRooms.data.data
+      
+      const myRooms = allRooms.filter((sala: any) => myInstIds.has(sala.fk_instituicao_id))
+
+      classrooms.value = myRooms.map((sala: any) => ({
         id: sala.id,
         name: sala.nome,
-        capacity: 30, 
+        capacity: 30, // Se tiver capacidade no banco, altere aqui: sala.capacidade
         available: true 
       }))
     }
+
     await fetchReservations()
   } catch (error) {
     console.error(error)
@@ -66,7 +89,12 @@ const fetchReservations = async () => {
     const resBookings = await api.get('/agendamentos') // ou /agendamento/listar
     if (resBookings.data.success) {
       const allBookings = resBookings.data.data
-      recentReservations.value = allBookings.slice(0, 10).map((b: any) => {
+      const userId = Number(authStore.user?.id)
+      
+      // Filtra apenas reservas do usuário logado
+      const myBookings = allBookings.filter((b: any) => Number(b.fk_usuario_id) === userId)
+
+      recentReservations.value = myBookings.slice(0, 10).map((b: any) => {
         let startTime = b.horario_inicio
         if (!startTime && b.horarios && b.horarios.length > 0) startTime = b.horarios[0].inicio
         
@@ -75,6 +103,7 @@ const fetchReservations = async () => {
         if (b.sala && b.sala.nome) {
           roomName = b.sala.nome
         } else {
+          // Tenta achar na lista de salas já carregada
           const found = classrooms.value.find(c => c.id === b.fk_salas_id)
           if (found) roomName = found.name
         }
@@ -92,7 +121,7 @@ const fetchReservations = async () => {
   } catch (error) { console.error(error) }
 }
 
-// --- LÓGICA DE CANCELAMENTO (PADRÃO SPA/SEM RELOAD) ---
+// --- LÓGICA DE CANCELAMENTO (COM EVENTO GLOBAL) ---
 const openCancelModal = (id: number) => {
   bookingToCancel.value = id
   showCancelModal.value = true
@@ -103,20 +132,20 @@ const confirmCancel = async () => {
   
   isCanceling.value = true
   try {
-    // 1. Chamada API
+    // 1. Chamada API para deletar
     await api.delete(`/agendamento/${bookingToCancel.value}`)
     
-    // 2. Atualização Local Imediata (Refletindo o padrão de Instituições)
+    // 2. Atualização Local Imediata (Remove visualmente da lista)
     recentReservations.value = recentReservations.value.filter(r => r.id !== bookingToCancel.value)
-
-    window.dispatchEvent(new Event('booking:updated'))
     
-    // 3. UI Feedback
+    // 3. Atualização do HEADER (Remove notificação sem reload)
+    window.dispatchEvent(new Event('booking:updated'))
+
+    // 4. Feedback Visual
     showCancelModal.value = false
     notification.showSuccess('Agendamento cancelado.')
 
   } catch (error: any) {
-    // Tratamento de Erro
     showCancelModal.value = false
     notification.showError('Erro ao cancelar: ' + (error.response?.data?.message || error.message))
   } finally {
@@ -155,6 +184,10 @@ const notifications = [
 
           <div v-else>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div v-if="classrooms.length === 0" class="col-span-full text-center py-8 text-slate-500 border border-dashed rounded-lg">
+                Nenhuma sala disponível nas suas instituições.
+              </div>
+
               <div v-for="room in classrooms" :key="room.id" class="bg-white rounded-lg border border-slate-200 p-0 flex flex-col hover:border-rose-600 hover:shadow-md transition-all duration-200 group">
                 <div class="p-5 flex-1">
                   <div class="flex justify-between items-start mb-4">
