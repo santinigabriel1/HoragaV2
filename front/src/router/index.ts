@@ -11,6 +11,7 @@ const Instituicoes = () => import('@/views/instituicoes/page.vue')
 const Disponibilidade = () => import('@/views/disponibilidade/page.vue')
 const Salas = () => import('@/views/salas/page.vue')
 const Melhorias = () => import('@/views/melhorias/page.vue')
+const Usuarios = () => import('@/views/usuarios/page.vue')
 
 // ATUALIZADO: Renomeamos a pasta '[roomId]' para 'sala' para evitar erros de importação
 const RoomSelection = () => import('@/views/agendamento/sala/page.vue')
@@ -68,6 +69,11 @@ const router = createRouter({
       path: '/melhorias',
       name: 'melhorias',
       component: Melhorias
+    },
+    {
+      path: '/usuarios',
+      name: 'usuarios',
+      component: Usuarios
     },
     // Rota Dinâmica (A URL continua igual, mas aponta para a pasta 'sala')
     { 

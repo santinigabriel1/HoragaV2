@@ -3,7 +3,7 @@ import { useRoute, useRouter } from 'vue-router'
 // Adicionei 'Sparkles' aos imports para o ícone de Melhorias Futuras
 import { 
   Home, Calendar, Clock, BarChart3, Building2, 
-  LogOut, X, DoorOpen, Sparkles 
+  LogOut, X, DoorOpen, Sparkles, Users
 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -19,12 +19,13 @@ const isActive = (path: string) => route.path.startsWith(path)
 // Nova ordem e novos nomes conforme solicitado
 const menuItems = [
   { label: 'Início', icon: Home, path: '/agendamento' },
-  { label: 'Agenda', icon: Calendar, path: '/calendario' },        // Renomeado (era Calendário)
+  { label: 'Agenda', icon: Calendar, path: '/calendario' },        
   { label: 'Disponibilidade', icon: Clock, path: '/disponibilidade' },
   { label: 'Salas', icon: DoorOpen, path: '/salas' },
+  { label: 'Usuários', icon: Users, path: '/usuarios' },
   { label: 'Instituições', icon: Building2, path: '/instituicoes' },
-  { label: 'Dashboard', icon: BarChart3, path: '/estatisticas' },  // Renomeado (era Estatísticas)
-  { label: 'Melhorias Futuras', icon: Sparkles, path: '/melhorias' }, // Novo Item
+  { label: 'Dashboard', icon: BarChart3, path: '/estatisticas' },  
+  { label: 'Melhorias Futuras', icon: Sparkles, path: '/melhorias' }, 
 ]
 </script>
 

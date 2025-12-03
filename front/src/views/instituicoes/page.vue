@@ -3,8 +3,8 @@ import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   Building2, MapPin, Plus, CheckCircle2, 
-  User, Pencil, Trash2, Loader2, AlertTriangle, 
-  Users, Check, X, ShieldAlert 
+  Pencil, Trash2, Loader2, AlertTriangle, 
+  Users 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Modal from '@/components/ui/Modal.vue'
@@ -24,108 +24,71 @@ const institutions = ref<any[]>([])
 
 // --- ESTADOS DOS MODAIS ---
 const showModal = ref(false) // Criar/Editar
-const showDeleteModal = ref(false) // Excluir
-const showManageModal = ref(false) // <--- NOVO: Gerenciar Usuários
+const showDeleteModal = ref(false)
+const showMembersModal = ref(false) // <--- APENAS LEITURA
 
 const isEditing = ref(false)
 const itemToDelete = ref<number | null>(null)
-const selectedInstitution = ref<any>(null) // Instituição sendo gerenciada
+const selectedInstitution = ref<any>(null)
 
-// Lista de usuários da instituição selecionada (Mock para exemplo)
-const institutionUsers = ref<any[]>([])
-const isLoadingUsers = ref(false)
+// Lista SOMENTE LEITURA de membros ativos
+const activeMembers = ref<any[]>([])
+const isLoadingMembers = ref(false)
 
-const formData = reactive({
-  id: null as number | null,
-  nome: '',
-  descricao: ''
-})
+const formData = reactive({ id: null as number | null, nome: '', descricao: '' })
 
 // --- BUSCA INICIAL ---
 const fetchInstitutions = async () => {
   isLoading.value = true
   try {
     const { data } = await api.get('/instituicoes')
-    
     if (data.success && authStore.user) {
       const userId = Number(authStore.user.id)
-      
-      const myInstitutions = data.data.filter((inst: any) => Number(inst.organizador) === userId)
-
-      institutions.value = myInstitutions.map((inst: any) => ({
-        id: inst.id,
-        name: inst.nome,
-        description: inst.descricao,
-        managerId: inst.organizador,
-        managerName: authStore.user?.nome || 'Eu', 
-        status: 'active',
-        // Simulando contagem de pendências (no futuro virá do backend: inst.pending_requests)
-        pendingCount: Math.random() > 0.5 ? Math.floor(Math.random() * 5) : 0 
+      const raw = data.data || []
+      // Filtra apenas as minhas
+      institutions.value = raw.filter((i: any) => Number(i.organizador) === userId).map((i: any) => ({
+        ...i,
+        status: 'active'
       }))
     }
-  } catch (error) {
-    console.error('Erro ao buscar:', error)
-  } finally {
-    isLoading.value = false
-  }
+  } catch (error) { console.error(error) } 
+  finally { isLoading.value = false }
 }
 
-// --- GESTÃO DE USUÁRIOS (NOVO) ---
-const openManageModal = async (inst: any) => {
+// --- VISUALIZAR MEMBROS (READ-ONLY) ---
+const openMembersModal = async (inst: any) => {
   selectedInstitution.value = inst
-  showManageModal.value = true
-  isLoadingUsers.value = true
-  institutionUsers.value = []
+  showMembersModal.value = true
+  isLoadingMembers.value = true
+  activeMembers.value = []
 
   try {
-    // AQUI: No futuro, chamar api.get(`/instituicao/${inst.id}/usuarios`)
-    // Simulando resposta da API com base na sua imagem de referência
-    await new Promise(resolve => setTimeout(resolve, 600)) // Fake delay
+    // Aqui buscaria api.get(`/usuarios-instituicao/${inst.id}`)
+    await new Promise(resolve => setTimeout(resolve, 300))
     
-    institutionUsers.value = [
-      { id: 1, nome: 'Gustavo Gomes', email: 'gustavo@email.com', status: 'approved', avatar: '' },
-      { id: 2, nome: 'Gabriel Ferreira', email: 'gabriel@email.com', status: 'approved', avatar: '' },
-      { id: 3, nome: 'Bruno da Silveira', email: 'bruno@email.com', status: 'pending', avatar: '' }, // Pendente
-      { id: 4, nome: 'Yuri Peruzzo', email: 'yuri@email.com', status: 'pending', avatar: '' },    // Pendente
+    // MOCK: Apenas usuários ativos (aceito=1, bloqueado=0)
+    // Simulando que esses são os dados que vêm do banco
+    activeMembers.value = [
+      { id: 1, nome: 'Gustavo Gomes', email: 'gustavo@email.com', cargo: 'Aluno' },
+      { id: 2, nome: 'Gabriel Ferreira', email: 'gabriel@email.com', cargo: 'Professor' },
+      { id: 5, nome: 'Leonardo Bellotti', email: 'leo@email.com', cargo: 'Aluno' },
     ]
-  } catch (error) {
-    notification.showError('Erro ao carregar usuários.')
+  } catch (e) {
+    console.error(e)
   } finally {
-    isLoadingUsers.value = false
+    isLoadingMembers.value = false
   }
 }
 
-const approveUser = async (userId: number) => {
-  // Chamada API: api.patch(`/instituicao/vinculo/${userId}`, { status: 'approved' })
-  const user = institutionUsers.value.find(u => u.id === userId)
-  if (user) {
-    user.status = 'approved'
-    notification.showSuccess(`Acesso liberado para ${user.nome}`)
-    // Atualiza contador visualmente no card
-    if (selectedInstitution.value && selectedInstitution.value.pendingCount > 0) {
-      selectedInstitution.value.pendingCount--
-    }
-  }
-}
-
-const rejectUser = async (userId: number) => {
-  // Chamada API: api.delete(`/instituicao/vinculo/${userId}`)
-  institutionUsers.value = institutionUsers.value.filter(u => u.id !== userId)
-  notification.showSuccess('Solicitação rejeitada/removida.')
-   if (selectedInstitution.value && selectedInstitution.value.pendingCount > 0) {
-      selectedInstitution.value.pendingCount--
-    }
-}
-
-// --- CRUD PADRÃO (MANTIDO) ---
+// --- CRUD ---
 const openCreateModal = () => {
   isEditing.value = false; formData.id = null; formData.nome = ''; formData.descricao = ''
   showModal.value = true
 }
 
 const openEditModal = (inst: any, event: Event) => {
-  event.stopPropagation() // Evita abrir o modal de gestão ao clicar no edit
-  isEditing.value = true; formData.id = inst.id; formData.nome = inst.name; formData.descricao = inst.description
+  event.stopPropagation()
+  isEditing.value = true; formData.id = inst.id; formData.nome = inst.name || inst.nome; formData.descricao = inst.description || inst.descricao
   showModal.value = true
 }
 
@@ -135,30 +98,25 @@ const handleSave = async () => {
     const payload = { nome: formData.nome, descricao: formData.descricao, organizador: authStore.user?.id }
     if (isEditing.value && formData.id) {
       await api.patch(`/instituicao/${formData.id}`, payload)
-      const index = institutions.value.findIndex(i => i.id === formData.id)
-      if (index !== -1) {
-        institutions.value[index].name = formData.nome
-        institutions.value[index].description = formData.descricao
+      // Atualiza local simples
+      const idx = institutions.value.findIndex(i => i.id === formData.id)
+      if (idx !== -1) {
+        institutions.value[idx].nome = formData.nome
+        institutions.value[idx].descricao = formData.descricao
       }
       notification.showSuccess('Atualizado!')
     } else {
       const { data } = await api.post('/instituicao', payload)
-      institutions.value.push({
-        id: data.data.id, name: formData.nome, description: formData.descricao,
-        managerId: authStore.user?.id, managerName: authStore.user?.nome, status: 'active', pendingCount: 0
-      })
+      institutions.value.push(data.data)
       notification.showSuccess('Criado!')
     }
     showModal.value = false
-  } catch (error: any) {
-    notification.showError('Erro: ' + (error.response?.data?.message || error.message))
-  } finally {
-    isSaving.value = false
-  }
+  } catch (e: any) { notification.showError(e.message) }
+  finally { isSaving.value = false }
 }
 
 const confirmDelete = (id: number, event: Event) => {
-  event.stopPropagation() // Evita abrir o modal de gestão
+  event.stopPropagation()
   itemToDelete.value = id; showDeleteModal.value = true
 }
 
@@ -169,12 +127,8 @@ const executeDelete = async () => {
     institutions.value = institutions.value.filter(i => i.id !== itemToDelete.value)
     showDeleteModal.value = false
     notification.showSuccess('Removido.')
-  } catch (error: any) {
-    showDeleteModal.value = false
-    notification.showError('Erro ao excluir: ' + error.message)
-  } finally {
-    isDeleting.value = false
-  }
+  } catch (e: any) { notification.showError(e.message) }
+  finally { isDeleting.value = false }
 }
 
 const handleLogout = () => router.push('/login')
@@ -193,8 +147,8 @@ onMounted(() => fetchInstitutions())
           
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h1 class="text-3xl md:text-2xl font-bold text-slate-900 mb-2">INSTITUIÇÕES</h1>
-              <p class="text-slate-500">Gerencie suas unidades e aprove novos membros.</p>
+              <h1 class="text-3xl font-bold text-slate-900 mb-2">Instituições</h1>
+              <p class="text-slate-500">Gerencie suas unidades.</p>
             </div>
             <button @click="openCreateModal" class="flex items-center gap-2 bg-[#be123c] hover:bg-[#9f1239] text-white px-4 py-2.5 rounded-md font-bold transition-colors shadow-sm">
               <Plus class="w-5 h-5" /> Nova Instituição
@@ -207,28 +161,25 @@ onMounted(() => fetchInstitutions())
 
           <div v-else-if="institutions.length === 0" class="text-center py-12 bg-white rounded-lg border border-dashed border-slate-300">
             <Building2 class="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p class="text-slate-500 font-medium">Você ainda não tem instituições.</p>
+            <p class="text-slate-500 font-medium">Nenhuma instituição encontrada.</p>
           </div>
 
           <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div 
               v-for="inst in institutions" 
               :key="inst.id" 
-              @click="openManageModal(inst)"
+              @click="openMembersModal(inst)"
               class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-rose-200 transition-all cursor-pointer group flex flex-col relative overflow-hidden"
             >
-              <div v-if="inst.pendingCount > 0" class="absolute top-3 right-3 flex items-center gap-1 bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded-full border border-red-200 z-10 animate-pulse">
-                <AlertTriangle class="w-3 h-3" />
-                {{ inst.pendingCount }} Pendentes
-              </div>
-
               <div class="p-5 border-b border-slate-100 flex justify-between items-start">
                 <div class="flex items-center gap-3">
                   <div class="w-12 h-12 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
                     <Building2 class="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 class="font-bold text-slate-900 leading-tight line-clamp-1 text-lg group-hover:text-rose-700 transition-colors">{{ inst.name }}</h3>
+                    <h3 class="font-bold text-slate-900 leading-tight line-clamp-1 text-lg transition-colors">
+                      {{ inst.nome || inst.name }}
+                    </h3>
                     <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide mt-1 bg-green-50 text-green-700 border border-green-200">
                       <CheckCircle2 class="w-3 h-3" /> Ativa
                     </span>
@@ -239,7 +190,7 @@ onMounted(() => fetchInstitutions())
               <div class="p-5 flex-1">
                 <div class="flex items-start gap-3 text-sm text-slate-600">
                   <MapPin class="w-4 h-4 mt-0.5 text-slate-400 shrink-0" />
-                  <span class="line-clamp-2">{{ inst.description || 'Sem descrição.' }}</span>
+                  <span class="line-clamp-2">{{ inst.descricao || inst.description || 'Sem descrição.' }}</span>
                 </div>
               </div>
 
@@ -252,8 +203,8 @@ onMounted(() => fetchInstitutions())
                     <Trash2 class="w-4 h-4" />
                   </button>
                 </div>
-                <div class="flex items-center gap-1 text-rose-600 font-bold group-hover:translate-x-1 transition-transform">
-                  Gerenciar <Users class="w-3 h-3" />
+                <div class="flex items-center gap-1 text-slate-400 group-hover:text-rose-600 transition-colors">
+                  <Users class="w-3 h-3" /> Ver Membros
                 </div>
               </div>
             </div>
@@ -265,15 +216,15 @@ onMounted(() => fetchInstitutions())
         <form @submit.prevent="handleSave" class="space-y-5">
           <div class="space-y-1.5">
             <label class="block text-sm font-semibold text-slate-700">Nome <span class="text-red-500">*</span></label>
-            <input v-model="formData.nome" type="text" required class="w-full h-10 px-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all" placeholder="Ex: Campus Central" />
+            <input v-model="formData.nome" type="text" required class="w-full h-10 px-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all" />
           </div>
           <div class="space-y-1.5">
             <label class="block text-sm font-semibold text-slate-700">Descrição</label>
-            <textarea v-model="formData.descricao" rows="3" class="w-full p-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none" placeholder="Endereço ou detalhes..."></textarea>
+            <textarea v-model="formData.descricao" rows="3" class="w-full p-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"></textarea>
           </div>
           <div class="flex gap-3 pt-2">
-            <button type="button" @click="showModal = false" class="flex-1 h-10 rounded-md border border-slate-300 font-medium text-slate-700 hover:bg-slate-50 transition-colors">Cancelar</button>
-            <button type="submit" :disabled="isSaving || !formData.nome" class="flex-1 h-10 rounded-md bg-[#be123c] text-white font-bold hover:bg-[#9f1239] disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm">
+            <button type="button" @click="showModal = false" class="flex-1 h-10 rounded-md border border-slate-300 font-medium text-slate-700 hover:bg-slate-50">Cancelar</button>
+            <button type="submit" :disabled="isSaving || !formData.nome" class="flex-1 h-10 rounded-md bg-[#be123c] text-white font-bold hover:bg-[#9f1239] disabled:opacity-50 flex items-center justify-center gap-2">
               <Loader2 v-if="isSaving" class="w-4 h-4 animate-spin" />
               <span v-else>{{ isEditing ? 'Salvar' : 'Criar' }}</span>
             </button>
@@ -281,76 +232,36 @@ onMounted(() => fetchInstitutions())
         </form>
       </Modal>
 
-      <Modal :is-open="showManageModal" title="Gestão de Membros" @close="showManageModal = false">
-        <div class="space-y-6">
-          <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
-             <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-rose-600 shadow-sm border border-slate-100 font-bold">
-               {{ selectedInstitution?.name.substring(0,2).toUpperCase() }}
-             </div>
-             <div>
-               <h4 class="font-bold text-slate-900">{{ selectedInstitution?.name }}</h4>
-               <p class="text-xs text-slate-500">Gerencie quem tem acesso a esta unidade.</p>
-             </div>
+      <Modal :is-open="showMembersModal" title="Membros da Instituição" @close="showMembersModal = false">
+        <div class="space-y-4">
+          <div class="bg-rose-50 p-4 rounded-lg border border-rose-100">
+            <h4 class="font-bold text-rose-900">{{ selectedInstitution?.nome || selectedInstitution?.name }}</h4>
+            <p class="text-xs text-rose-700">Listagem de usuários com acesso ativo.</p>
           </div>
 
-          <div v-if="isLoadingUsers" class="py-10 flex justify-center">
+          <div v-if="isLoadingMembers" class="py-8 flex justify-center">
             <Loader2 class="w-8 h-8 animate-spin text-rose-600" />
           </div>
 
-          <div v-else class="space-y-6">
-            
-            <div v-if="institutionUsers.some(u => u.status === 'pending')">
-              <h5 class="text-sm font-bold text-amber-600 uppercase tracking-wide mb-3 flex items-center gap-2">
-                <AlertTriangle class="w-4 h-4" /> Solicitações Pendentes
-              </h5>
-              <div class="space-y-2">
-                <div v-for="user in institutionUsers.filter(u => u.status === 'pending')" :key="user.id" class="flex items-center justify-between p-3 rounded-md border border-amber-200 bg-amber-50">
-                   <div class="flex items-center gap-3">
-                     <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-amber-600 font-bold text-xs shadow-sm">
-                       {{ user.nome.substring(0,2).toUpperCase() }}
-                     </div>
-                     <div>
-                       <p class="text-sm font-bold text-slate-800">{{ user.nome }}</p>
-                       <p class="text-xs text-slate-500">{{ user.email }}</p>
-                     </div>
-                   </div>
-                   <div class="flex gap-2">
-                     <button @click="approveUser(user.id)" class="p-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors" title="Aprovar"><Check class="w-4 h-4" /></button>
-                     <button @click="rejectUser(user.id)" class="p-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors" title="Rejeitar"><X class="w-4 h-4" /></button>
-                   </div>
+          <div v-else>
+            <div v-if="activeMembers.length === 0" class="text-center py-6 text-slate-400 italic text-sm">
+              Nenhum membro vinculado.
+            </div>
+            <div v-else class="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+              <div v-for="user in activeMembers" :key="user.id" class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-md border border-transparent hover:border-slate-100 transition-colors">
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-600 shadow-sm">
+                  {{ user.nome.substring(0,2).toUpperCase() }}
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-slate-800">{{ user.nome }}</p>
+                  <p class="text-[10px] text-slate-500">{{ user.email }} • {{ user.cargo }}</p>
                 </div>
               </div>
             </div>
+          </div>
 
-            <hr v-if="institutionUsers.some(u => u.status === 'pending') && institutionUsers.some(u => u.status === 'approved')" class="border-slate-100" />
-
-            <div>
-              <h5 class="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-2">
-                <Users class="w-4 h-4" /> Membros Ativos
-              </h5>
-              
-              <div v-if="institutionUsers.filter(u => u.status === 'approved').length === 0" class="text-center py-4 text-slate-400 text-sm italic">
-                Nenhum membro ativo.
-              </div>
-
-              <div class="space-y-2 max-h-[250px] overflow-y-auto pr-2">
-                <div v-for="user in institutionUsers.filter(u => u.status === 'approved')" :key="user.id" class="flex items-center justify-between p-2 hover:bg-slate-50 rounded-md transition-colors group">
-                   <div class="flex items-center gap-3">
-                     <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs">
-                       {{ user.nome.substring(0,2).toUpperCase() }}
-                     </div>
-                     <div>
-                       <p class="text-sm font-medium text-slate-700">{{ user.nome }}</p>
-                       <p class="text-xs text-slate-400">{{ user.email }}</p>
-                     </div>
-                   </div>
-                   <button @click="rejectUser(user.id)" class="opacity-0 group-hover:opacity-100 p-1.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded transition-all" title="Remover Membro">
-                     <Trash2 class="w-4 h-4" />
-                   </button>
-                </div>
-              </div>
-            </div>
-
+          <div class="flex justify-end pt-2">
+            <button @click="showMembersModal = false" class="px-4 py-2 bg-slate-800 text-white text-sm rounded-md font-bold hover:bg-slate-900">Fechar</button>
           </div>
         </div>
       </Modal>
@@ -361,8 +272,8 @@ onMounted(() => fetchInstitutions())
           <h3 class="text-lg font-bold text-slate-900">Tem certeza?</h3>
           <p class="text-sm text-slate-500 leading-relaxed">Ação irreversível.</p>
           <div class="flex gap-3 pt-4">
-            <button @click="showDeleteModal = false" class="flex-1 h-11 rounded-md border border-slate-300 font-bold text-slate-700 hover:bg-slate-50 transition-colors">Cancelar</button>
-            <button @click="executeDelete" :disabled="isDeleting" class="flex-1 h-11 rounded-md bg-red-600 text-white font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+            <button @click="showDeleteModal = false" class="flex-1 h-11 rounded-md border border-slate-300 font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
+            <button @click="executeDelete" :disabled="isDeleting" class="flex-1 h-11 rounded-md bg-red-600 text-white font-bold hover:bg-red-700 flex items-center justify-center gap-2">
               <Loader2 v-if="isDeleting" class="w-4 h-4 animate-spin" />
               <span v-else>Sim, Excluir</span>
             </button>
