@@ -3,7 +3,6 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar, Percent, XCircle, Activity } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
-import Header from '@/components/layout/Header.vue'
 
 const router = useRouter()
 const sidebarOpen = ref(false)
@@ -65,7 +64,7 @@ const handleLogout = () => router.push('/login')
         <div class="max-w-7xl mx-auto">
           
           <div class="mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Estatísticas</h1>
+            <h1 class="text-3xl md:text-2xl font-bold text-slate-900 mb-2">DASHBOARD</h1>
             <p class="text-slate-500">Análise detalhada de suas reservas e uso de salas</p>
           </div>
 

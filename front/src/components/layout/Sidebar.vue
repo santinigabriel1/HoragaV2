@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
-import { Home, Calendar, Clock, BarChart3, Building2, LogOut, X, DoorOpen } from 'lucide-vue-next'
+// Adicionei 'Sparkles' aos imports para o ícone de Melhorias Futuras
+import { 
+  Home, Calendar, Clock, BarChart3, Building2, 
+  LogOut, X, DoorOpen, Sparkles 
+} from 'lucide-vue-next'
 
 const props = defineProps<{
   isOpen: boolean
@@ -9,16 +13,18 @@ const props = defineProps<{
 const emit = defineEmits(['close', 'logout'])
 const route = useRoute()
 
-// Verifica se a rota atual começa com o path do link (para manter ativo nas sub-rotas)
+// Verifica se a rota atual começa com o path do link
 const isActive = (path: string) => route.path.startsWith(path)
 
+// Nova ordem e novos nomes conforme solicitado
 const menuItems = [
-  { label: 'Agendamento', icon: Home, path: '/agendamento' },
-  { label: 'Salas', icon: DoorOpen, path: '/salas' },
-  { label: 'Calendário', icon: Calendar, path: '/calendario' },
+  { label: 'Início', icon: Home, path: '/agendamento' },
+  { label: 'Agenda', icon: Calendar, path: '/calendario' },        // Renomeado (era Calendário)
   { label: 'Disponibilidade', icon: Clock, path: '/disponibilidade' },
-  { label: 'Estatísticas', icon: BarChart3, path: '/estatisticas' },
+  { label: 'Salas', icon: DoorOpen, path: '/salas' },
   { label: 'Instituições', icon: Building2, path: '/instituicoes' },
+  { label: 'Dashboard', icon: BarChart3, path: '/estatisticas' },  // Renomeado (era Estatísticas)
+  { label: 'Melhorias Futuras', icon: Sparkles, path: '/melhorias' }, // Novo Item
 ]
 </script>
 

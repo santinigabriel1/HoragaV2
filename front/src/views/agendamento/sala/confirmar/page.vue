@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronLeft, MapPin, Calendar, Clock, CheckCircle, AlertCircle } from 'lucide-vue-next'
+import { ChevronLeft, MapPin, Calendar, Clock } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
-import Header from '@/components/layout/Header.vue'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
@@ -12,6 +11,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
+
 // Dados da URL
 const roomId = route.params.roomId
 const dateISO = route.query.date as string
@@ -42,7 +42,7 @@ onMounted(async () => {
 
 const handleSubmit = async () => {
   // Validação rápida
-  if (!formData.subject) return alert('Preencha o assunto!')
+  if (!formData.subject) return notificationStore.showError('Preencha o assunto!')
   
   isLoading.value = true
 
@@ -56,7 +56,7 @@ const handleSubmit = async () => {
       return
     }
 
-    // Payload Corrigido (Array para Horarios, fk_salas_id plural)
+    // Payload Corrigido
     const payload = {
       fk_usuario_id: authStore.user.id,
       fk_salas_id: Number(roomId),
@@ -67,7 +67,9 @@ const handleSubmit = async () => {
           fim: end
         }
       ],
-      proposito: formData.subject
+      proposito: formData.subject,
+      // --- CORREÇÃO AQUI: Enviando a descrição para o banco ---
+      descricao: formData.description 
     }
 
     console.log('Enviando:', payload)
@@ -76,7 +78,7 @@ const handleSubmit = async () => {
 
     if (data.success) {
       notificationStore.showSuccess('Reserva realizada com sucesso!')
-      router.push('/calendario')
+      router.push('/calendario') // Redireciona para a agenda para ver o resultado
     } else {
       throw new Error(data.message || 'Erro ao salvar')
     }
@@ -136,7 +138,7 @@ const handleLogout = () => router.push('/login')
               <div class="bg-white rounded-lg shadow-sm border border-slate-200">
                 <div class="p-6 border-b border-slate-100">
                   <h3 class="text-xl font-bold text-slate-900">Detalhes</h3>
-                  <p class="text-sm text-slate-500">Informe o motivo.</p>
+                  <p class="text-sm text-slate-500">Informe o motivo da reserva.</p>
                 </div>
                 
                 <div class="p-6">
@@ -148,7 +150,7 @@ const handleLogout = () => router.push('/login')
                     
                     <div>
                       <label class="block text-sm font-semibold text-slate-900 mb-2">Descrição</label>
-                      <textarea v-model="formData.description" rows="4" class="w-full p-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none" placeholder="Opcional..."></textarea>
+                      <textarea v-model="formData.description" rows="4" class="w-full p-3 rounded-md border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none" placeholder="Detalhes adicionais (Opcional)..."></textarea>
                     </div>
 
                     <div class="pt-2 flex gap-3">

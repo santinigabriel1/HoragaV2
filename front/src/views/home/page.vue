@@ -1,38 +1,88 @@
+Bem observado\! O cálculo matemático automático (`* 1.15` ou `* 0.85`) quebrava o padrão visual dos preços terminados em **,90** (ficava algo como R$ 22,88).
+
+Para resolver isso e deixar tudo profissional, defini **preços fixos** para cada ciclo, garantindo que todos terminem com aquele visual comercial agradável (19,90, 24,90, etc.).
+
+Aqui está o código completo corrigido de **`src/views/Home.vue`**:
+
+### O que mudou:
+
+1.  **Lógica de Preços:** Substituí a fórmula matemática por uma tabela (`pricingTable`) onde defini manualmente valores "bonitos" para 6 meses, 1 ano e 2 anos.
+2.  **Manutenção das Animações:** A lógica de *Scroll Reveal* continua lá.
+
+<!-- end list -->
+
+```html
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   Menu, X, Calendar, Users, BarChart3, 
-  Zap, Check, ChevronDown, ChevronUp, ArrowRight,
-  Bell
+  Zap, Check, ArrowRight, Bell
 } from 'lucide-vue-next'
 
 const router = useRouter()
 const menuOpen = ref(false)
-const activeFaq = ref<number | null>(null)
 const activeFeatureIndex = ref(0)
 const billingCycle = ref<'6meses' | '1ano' | '2anos'>('1ano')
 
-const toggleFaq = (index: number) => {
-  activeFaq.value = activeFaq.value === index ? null : index
-}
+// --- LÓGICA DE ANIMAÇÃO DE SCROLL ---
+let observer: IntersectionObserver | null = null
+
+onMounted(() => {
+  observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible')
+      } else {
+        entry.target.classList.remove('is-visible')
+      }
+    })
+  }, {
+    threshold: 0.1,
+    rootMargin: "0px 0px -50px 0px"
+  })
+
+  setTimeout(() => {
+    const elements = document.querySelectorAll('.animate-on-scroll')
+    elements.forEach((el) => observer?.observe(el))
+  }, 100)
+})
+
+onUnmounted(() => {
+  if (observer) observer.disconnect()
+})
 
 const navigateTo = (path: string) => {
   router.push(path)
   menuOpen.value = false
 }
 
-const basePrices: Record<string, number> = {
-  'Starter': 23.08,
-  'Standard': 45.23,
-  'Pro': 72.92
+// --- TABELA DE PREÇOS FIXOS (Tudo terminando em ,90) ---
+// Definimos valores manuais para garantir o visual "Psicológico"
+const pricingTable: Record<string, Record<string, number>> = {
+  'Starter': {
+    '6meses': 24.90, // Um pouco mais caro
+    '1ano': 19.90,   // Base
+    '2anos': 17.90   // Desconto
+  },
+  'Standard': {
+    '6meses': 59.90,
+    '1ano': 49.90,
+    '2anos': 39.90
+  },
+  'Pro': {
+    '6meses': 99.90,
+    '1ano': 79.90,
+    '2anos': 69.90
+  }
 }
 
 const getPrice = (planName: string) => {
   if (planName === 'Free') return 'R$ 0'
-  let price = basePrices[planName]
-  if (billingCycle.value === '6meses') price = price * 1.15
-  if (billingCycle.value === '2anos') price = price * 0.85
+  
+  // Busca o valor exato na tabela
+  const price = pricingTable[planName][billingCycle.value]
+  
   return price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
@@ -42,7 +92,6 @@ const getPeriodText = () => {
   return '/mês'
 }
 
-// Dados Encorpados e com Mais Recursos para encher o card
 const plans = [
   { 
     name: 'Free', 
@@ -78,42 +127,35 @@ const plans = [
 const interactiveFeatures = [
   {
     title: 'Gerenciamento de Calendário',
-    desc: 'Veja todos os agendamentos, aulas e manutenções em um lugar só. Visualize por dia, semana ou mês com facilidade.',
+    desc: 'Veja todos os agendamentos, aulas e manutenções em um lugar só.',
     image: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?q=80&w=2539&auto=format&fit=crop',
     icon: Calendar
   },
   {
     title: 'Gestão de Equipes',
-    desc: 'Coordene professores e coordenadores. Defina quem pode reservar o que e mantenha o controle total dos acessos.',
+    desc: 'Coordene professores e coordenadores com controle total de acesso.',
     image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=2664&auto=format&fit=crop',
     icon: Users
   },
   {
     title: 'Relatórios e Análise',
-    desc: 'Descubra quais laboratórios são subutilizados. Tome decisões baseadas em dados reais de ocupação.',
+    desc: 'Descubra laboratórios subutilizados e tome decisões baseadas em dados.',
     image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2670&auto=format&fit=crop',
     icon: BarChart3
   },
   {
     title: 'Notificações Automáticas',
-    desc: 'O sistema avisa sobre conflitos, manutenções e confirmações de reserva. Ninguém perde viagem.',
+    desc: 'Avisos sobre conflitos e manutenções. Ninguém perde viagem.',
     image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2670&auto=format&fit=crop',
     icon: Bell
   }
 ]
-
-const faqs = [
-  { q: 'O sistema serve apenas para escolas?', a: 'Embora nosso foco seja ETECs e FATECs, o Horagá funciona perfeitamente para universidades e coworkings.' },
-  { q: 'Preciso instalar algum software?', a: 'Não! O Horagá é 100% em nuvem. Você só precisa de um navegador e internet.' },
-  { q: 'Existe limite de usuários?', a: 'Nos planos pagos, o número de usuários é ilimitado.' },
-  { q: 'Como funciona o suporte?', a: 'Oferecemos suporte via chat e e-mail com tempo de resposta garantido para planos pagos.' },
-]
 </script>
 
 <template>
-  <div class="min-h-screen bg-white font-sans text-slate-600">
+  <div class="w-full min-h-screen bg-white font-sans text-slate-600">
     
-    <nav class="fixed w-full bg-white/95 backdrop-blur-md border-b border-slate-100 z-50">
+    <nav class="fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-100 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16 items-center">
           <div class="flex items-center gap-2 cursor-pointer" @click="navigateTo('/')">
@@ -121,62 +163,62 @@ const faqs = [
             <span class="text-xl font-bold text-slate-900 tracking-tight">HORAGÁ</span>
           </div>
           <div class="hidden md:flex items-center gap-8">
-            <a href="#funcionalidades" class="text-sm font-medium hover:text-rose-600 transition-colors">Funcionalidades</a>
-            <a href="#precos" class="text-sm font-medium hover:text-rose-600 transition-colors">Planos</a>
+            <a href="#funcionalidades" class="text-sm font-medium hover:text-[#be123c] transition-colors">Funcionalidades</a>
+            <a href="#precos" class="text-sm font-medium hover:text-[#be123c] transition-colors">Planos</a>
             <div class="flex items-center gap-4 ml-4">
-              <button @click="navigateTo('/login')" class="text-sm font-bold text-slate-700 hover:text-rose-600">Entrar</button>
-              <button @click="navigateTo('/register')" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg shadow-rose-200 hover:shadow-rose-300 hover:-translate-y-0.5">
+              <button @click="navigateTo('/login')" class="text-sm font-bold text-slate-700 hover:text-[#be123c]">Entrar</button>
+              <button @click="navigateTo('/register')" class="bg-[#be123c] hover:bg-[#9f1239] text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg shadow-rose-200 hover:shadow-rose-300 hover:-translate-y-0.5">
                 Criar Conta Grátis
               </button>
             </div>
           </div>
-          <button class="md:hidden p-2" @click="menuOpen = !menuOpen">
+          <button class="md:hidden p-2 text-slate-600" @click="menuOpen = !menuOpen">
             <Menu v-if="!menuOpen" class="w-6 h-6" />
             <X v-else class="w-6 h-6" />
           </button>
         </div>
       </div>
       <div v-if="menuOpen" class="md:hidden bg-white border-t border-slate-100 p-4 space-y-4 absolute w-full shadow-xl">
-        <a href="#funcionalidades" class="block font-medium" @click="menuOpen = false">Funcionalidades</a>
-        <a href="#precos" class="block font-medium" @click="menuOpen = false">Planos</a>
+        <a href="#funcionalidades" class="block font-medium hover:text-[#be123c]" @click="menuOpen = false">Funcionalidades</a>
+        <a href="#precos" class="block font-medium hover:text-[#be123c]" @click="menuOpen = false">Planos</a>
         <div class="pt-4 border-t border-slate-100 flex flex-col gap-3">
-          <button @click="navigateTo('/login')" class="w-full py-3 rounded-lg border border-slate-200 font-bold text-slate-700">Entrar</button>
-          <button @click="navigateTo('/register')" class="w-full py-3 rounded-lg bg-rose-600 text-white font-bold">Criar Conta</button>
+          <button @click="navigateTo('/login')" class="w-full py-3 rounded-lg border border-slate-200 font-bold text-slate-700 hover:text-[#be123c] hover:border-rose-200">Entrar</button>
+          <button @click="navigateTo('/register')" class="w-full py-3 rounded-lg bg-[#be123c] text-white font-bold hover:bg-[#9f1239]">Criar Conta</button>
         </div>
       </div>
     </nav>
 
     <section class="pt-32 pb-16 lg:pt-44 lg:pb-24 overflow-hidden">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center animate-on-scroll">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-[10px] font-bold uppercase tracking-wide mb-6 border border-rose-100">
           <span class="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
           Novo: Integração via API
         </div>
         <h1 class="text-4xl md:text-6xl font-extrabold text-slate-900 leading-tight mb-6">
           Economize tempo com uma <br />
-          <span class="text-rose-600">agenda online inteligente</span>
+          <span class="text-[#be123c]">agenda online inteligente</span>
         </h1>
         <p class="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
           Simplifique a gestão de laboratórios e salas de aula. Elimine conflitos de horário e centralize o controle da sua instituição em uma única plataforma.
         </p>
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <button @click="navigateTo('/register')" class="w-full sm:w-auto px-8 py-4 bg-rose-600 text-white rounded-lg font-bold text-lg shadow-xl shadow-rose-200 hover:shadow-2xl hover:bg-rose-700 transition-all flex items-center justify-center gap-2 hover:-translate-y-1">
+          <button @click="navigateTo('/register')" class="w-full sm:w-auto px-8 py-4 bg-[#be123c] text-white rounded-lg font-bold text-lg shadow-xl shadow-rose-200 hover:shadow-2xl hover:bg-[#9f1239] transition-all flex items-center justify-center gap-2 hover:-translate-y-1">
             Começar Agora <ArrowRight class="w-5 h-5" />
           </button>
-          <button class="w-full sm:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-lg font-bold text-lg hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
+          <button class="w-full sm:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-lg font-bold text-lg hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm hover:text-[#be123c]">
             Saiba Mais
           </button>
         </div>
       </div>
     </section>
 
-    <section id="funcionalidades" class="py-16 bg-white">
+    <section id="funcionalidades" class="py-16 bg-white animate-on-scroll">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="bg-slate-50 rounded-2xl p-6 md:p-10 border border-slate-100">
           <div class="grid lg:grid-cols-2 gap-8 items-center">
             <div class="space-y-2">
-              <div v-for="(feature, index) in interactiveFeatures" :key="index" @click="activeFeatureIndex = index" class="cursor-pointer p-4 rounded-lg transition-all duration-300 border-l-[3px]" :class="activeFeatureIndex === index ? 'bg-white shadow-sm border-rose-600' : 'bg-transparent border-transparent hover:bg-white/50 opacity-80 hover:opacity-100'">
-                <h3 class="text-lg font-bold mb-1 flex items-center gap-2" :class="activeFeatureIndex === index ? 'text-rose-700' : 'text-slate-700'">
+              <div v-for="(feature, index) in interactiveFeatures" :key="index" @click="activeFeatureIndex = index" class="cursor-pointer p-4 rounded-lg transition-all duration-300 border-l-[3px]" :class="activeFeatureIndex === index ? 'bg-white shadow-sm border-[#be123c]' : 'bg-transparent border-transparent hover:bg-white/50 opacity-80 hover:opacity-100'">
+                <h3 class="text-lg font-bold mb-1 flex items-center gap-2" :class="activeFeatureIndex === index ? 'text-[#be123c]' : 'text-slate-700'">
                    <component :is="feature.icon" class="w-4 h-4" /> {{ feature.title }}
                 </h3>
                 <p class="text-xs leading-relaxed" :class="activeFeatureIndex === index ? 'text-slate-600' : 'text-slate-400'">{{ feature.desc }}</p>
@@ -198,19 +240,19 @@ const faqs = [
     <section id="precos" class="py-24 bg-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        <div class="text-center mb-20">
+        <div class="text-center mb-20 animate-on-scroll">
           <h2 class="text-4xl font-extrabold text-slate-900 mb-8">Plano para empresas de qualquer porte</h2>
           <div class="inline-flex bg-slate-100 p-1.5 rounded-lg relative shadow-inner">
-            <button @click="billingCycle = '6meses'" class="px-6 py-2 rounded-md text-sm font-bold transition-all relative z-10" :class="billingCycle === '6meses' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'">6 meses</button>
-            <button @click="billingCycle = '1ano'" class="px-6 py-2 rounded-md text-sm font-bold transition-all relative z-10" :class="billingCycle === '1ano' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'">1 ano</button>
-            <button @click="billingCycle = '2anos'" class="px-6 py-2 rounded-md text-sm font-bold transition-all relative z-10" :class="billingCycle === '2anos' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'">2 anos</button>
+            <button @click="billingCycle = '6meses'" class="px-6 py-2 rounded-md text-sm font-bold transition-all relative z-10" :class="billingCycle === '6meses' ? 'bg-white text-[#be123c] shadow-sm' : 'text-slate-500 hover:text-slate-900'">6 meses</button>
+            <button @click="billingCycle = '1ano'" class="px-6 py-2 rounded-md text-sm font-bold transition-all relative z-10" :class="billingCycle === '1ano' ? 'bg-[#be123c] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'">1 ano</button>
+            <button @click="billingCycle = '2anos'" class="px-6 py-2 rounded-md text-sm font-bold transition-all relative z-10" :class="billingCycle === '2anos' ? 'bg-white text-[#be123c] shadow-sm' : 'text-slate-500 hover:text-slate-900'">2 anos</button>
             <span v-show="billingCycle === '1ano'" class="absolute -top-8 left-1/2 -translate-x-1/2 w-max bg-slate-800 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg animate-bounce">
               Ganhe 3 meses grátis 🎁
             </span>
           </div>
         </div>
 
-        <div class="flex flex-col md:flex-row max-w-6xl mx-auto border border-slate-200 rounded-2xl shadow-xl overflow-hidden divide-y md:divide-y-0 md:divide-x divide-slate-200">
+        <div class="flex flex-col md:flex-row max-w-6xl mx-auto border border-slate-200 rounded-2xl shadow-xl overflow-hidden divide-y md:divide-y-0 md:divide-x divide-slate-200 animate-on-scroll">
           
           <div 
             v-for="plan in plans" 
@@ -235,7 +277,7 @@ const faqs = [
               </div>
               <span class="text-xs text-slate-400 font-medium block mt-1">{{ getPeriodText() }}</span>
               
-              <div v-if="plan.name !== 'Free'" class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-100">
+              <div v-if="plan.name !== 'Free'" class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-100">
                 <span>🎉</span> + 1 mês grátis
               </div>
               <div v-else class="mt-3 h-[26px]"></div>
@@ -244,8 +286,8 @@ const faqs = [
             <button 
               class="w-full py-3 rounded-lg font-bold text-sm transition-all mb-8 border shadow-sm transform active:scale-95"
               :class="plan.highlight 
-                ? 'bg-rose-600 text-white border-transparent hover:bg-rose-700 hover:shadow-md' 
-                : 'bg-white text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300'"
+                ? 'bg-[#be123c] text-white border-transparent hover:bg-[#9f1239] hover:shadow-md' 
+                : 'bg-white text-[#be123c] border-rose-200 hover:bg-rose-50 hover:border-rose-300'"
             >
               {{ plan.button }}
             </button>
@@ -264,11 +306,11 @@ const faqs = [
       </div>
     </section>
 
-    <footer class="bg-slate-900 text-slate-400 py-12 border-t border-slate-800">
+    <footer class="bg-slate-900 text-slate-400 py-12 border-t border-slate-800 animate-on-scroll">
       <div class="max-w-7xl mx-auto px-4 grid md:grid-cols-4 gap-8 mb-8">
         <div class="col-span-1 md:col-span-2">
           <div class="flex items-center gap-2 text-white mb-4">
-            <Calendar class="w-6 h-6 text-rose-500" />
+            <Calendar class="w-6 h-6 text-[#be123c]" />
             <span class="text-xl font-bold">HORAGÁ</span>
           </div>
           <p class="text-sm max-w-xs leading-relaxed">
@@ -305,6 +347,22 @@ const faqs = [
 
 <style scoped>
 html { scroll-behavior: smooth; }
+
+/* Transições para o Carousel de Funcionalidades */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* ANIMAÇÃO DE SCROLL (Scroll Reveal) */
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.animate-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
 </style>
+```

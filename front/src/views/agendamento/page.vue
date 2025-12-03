@@ -6,7 +6,6 @@ import {
   Trash2, Loader2, AlertTriangle 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
-import Header from '@/components/layout/Header.vue'
 import Modal from '@/components/ui/Modal.vue'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -174,7 +173,7 @@ const notifications = [
         <div class="max-w-7xl mx-auto">
           
           <div class="mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Agendamento</h1>
+            <h1 class="text-3xl md:text-2xl font-bold text-slate-900 mb-2">AGENDAMENTO</h1>
             <p class="text-slate-500">Visão geral das salas e atividades recentes.</p>
           </div>
 

@@ -5,7 +5,6 @@ import {
   Clock, Calendar, Save, Plus, Trash2, AlertCircle, Copy, ClipboardPaste, Check 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
-import Header from '@/components/layout/Header.vue'
 import api from '@/services/api'
 import { useNotificationStore } from '@/stores/notification' 
 import { useAuthStore } from '@/stores/auth'
@@ -161,7 +160,7 @@ const exceptions = ref([{ id: 1, date: '2025-12-25', name: 'Natal' }])
         <div class="max-w-6xl mx-auto">
           
           <div class="mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Disponibilidade</h1>
+            <h1 class="text-3xl md:text-2xl font-bold text-slate-900 mb-2">DISPONIBILIDADE</h1>
             <p class="text-slate-500">Defina os horários de funcionamento.</p>
           </div>
 

@@ -5,7 +5,6 @@ import {
   ArrowLeft, Calendar as CalendarIcon, Clock, Check, XCircle, Loader2 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
-import Header from '@/components/layout/Header.vue'
 import api from '@/services/api'
 
 const route = useRoute()

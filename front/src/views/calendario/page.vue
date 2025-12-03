@@ -2,264 +2,395 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
-  Clock, MapPin, Loader2, AlignLeft 
+  Filter, RotateCcw, LayoutGrid, ChevronLeft, ChevronRight, 
+  Calendar as CalendarIcon, Clock, Users, Search, Info, User 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
-import Header from '@/components/layout/Header.vue'
 import Modal from '@/components/ui/Modal.vue'
 import api from '@/services/api'
-import { useAuthStore } from '@/stores/auth' // <--- 1. Importar Store
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
-const authStore = useAuthStore() // <--- 2. Inicializar Store
+const authStore = useAuthStore()
 const sidebarOpen = ref(false)
 const isLoading = ref(true)
 
-// Estado
-const currentDate = ref(new Date()) 
-const events = ref<any[]>([])
-const showModal = ref(false)
+// --- ESTADO DA DATA ---
+const currentDate = ref(new Date())
+
+// --- DADOS ---
+const rooms = ref<any[]>([]) 
+const bookings = ref<any[]>([]) 
+const myInstitutions = ref<any[]>([]) 
+
+// --- ESTADO DO MODAL DE DETALHES ---
+const showEventModal = ref(false)
 const selectedEvent = ref<any>(null)
 
-// Configurações do Grid
-const startHour = 6 
-const endHour = 23 
+// --- CONFIGURAÇÃO DO GRID ---
+const startHour = 7  
+const endHour = 22   
 const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i)
 
-// --- NAVEGAÇÃO SEMANAL ---
-const weekLabel = computed(() => {
-  const start = getStartOfWeek(new Date(currentDate.value))
-  const end = new Date(start)
-  end.setDate(end.getDate() + 6)
-  const m1 = start.toLocaleDateString('pt-BR', { month: 'short' })
-  const m2 = end.toLocaleDateString('pt-BR', { month: 'short' })
-  const y = start.getFullYear()
-  if (m1 === m2) return `${m1} ${y}`
-  return `${m1} - ${m2} ${y}`
+// --- COMPUTEDS ---
+const formattedDateTitle = computed(() => {
+  return currentDate.value.toLocaleDateString('pt-BR', { 
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' 
+  }).replace(/^\w/, (c) => c.toUpperCase())
 })
 
-function getStartOfWeek(date: Date) {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = d.getDate() - day
-  return new Date(d.setDate(diff))
-}
+const shortDate = computed(() => currentDate.value.toLocaleDateString('pt-BR'))
 
-const prevWeek = () => {
+const isToday = computed(() => {
+  const today = new Date()
+  return today.toDateString() === currentDate.value.toDateString()
+})
+
+// --- NAVEGAÇÃO ---
+const prevDay = () => {
   const d = new Date(currentDate.value)
-  d.setDate(d.getDate() - 7)
+  d.setDate(d.getDate() - 1)
   currentDate.value = d
 }
-
-const nextWeek = () => {
+const nextDay = () => {
   const d = new Date(currentDate.value)
-  d.setDate(d.getDate() + 7)
+  d.setDate(d.getDate() + 1)
   currentDate.value = d
 }
-
 const goToToday = () => currentDate.value = new Date()
 
-// --- GERAÇÃO DOS DIAS ---
-const weekDays = computed(() => {
-  const start = getStartOfWeek(new Date(currentDate.value))
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start)
-    d.setDate(d.getDate() + i)
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    const dateISO = `${year}-${month}-${day}`
-    const isToday = new Date().toDateString() === d.toDateString()
-    return {
-      dateObj: d,
-      dayName: d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', ''),
-      dayNumber: d.getDate(),
-      dateISO, 
-      isToday
-    }
-  })
-})
+// --- AUXILIAR: RESOLVER NOME DO USUÁRIO ---
+const getUserName = (booking: any) => {
+  // 1. Verifica se o agendamento é MEU (do usuário logado)
+  const myId = Number(authStore.user?.id)
+  const bookingUserId = Number(booking.fk_usuario_id)
 
-// --- CÁLCULO VISUAL ---
-const getEventStyle = (event: any) => {
-  if (!event.startTimeRaw || !event.endTimeRaw) return { display: 'none' }
-  const [hStart, mStart] = event.startTimeRaw.split(':').map(Number)
-  const [hEnd, mEnd] = event.endTimeRaw.split(':').map(Number)
-  const startMinutes = (hStart - startHour) * 60 + mStart
-  const endMinutes = (hEnd - startHour) * 60 + mEnd
-  const durationMinutes = endMinutes - startMinutes
-  const pixelsPerMinute = 80 / 60
-  return {
-    top: `${startMinutes * pixelsPerMinute}px`,
-    height: `${Math.max(durationMinutes * pixelsPerMinute, 20)}px`
+  if (myId && bookingUserId === myId) {
+    // Retorna o nome da sessão atual (ex: "teste")
+    return authStore.user?.nome || 'Eu'
   }
+
+  // 2. Se não for eu, tenta pegar do objeto 'usuario' (se o backend fez JOIN)
+  if (booking.usuario && booking.usuario.nome) {
+    return booking.usuario.nome
+  }
+
+  // 3. Fallback se não tiver nome
+  return `Usuário #${bookingUserId}`
 }
 
-const getEventsForDay = (dateISO: string) => {
-  return events.value.filter(e => e.dateISO === dateISO)
+// --- AUXILIAR: RESOLVER EMAIL ---
+const getUserEmail = (booking: any) => {
+  const myId = Number(authStore.user?.id)
+  const bookingUserId = Number(booking.fk_usuario_id)
+
+  if (myId && bookingUserId === myId) {
+    return authStore.user?.email || 'Email não disponível'
+  }
+  return booking.usuario?.email || 'Email não disponível'
 }
 
-// --- API SEGURA (FILTRAGEM) ---
-const fetchAgendamentos = async () => {
+// --- BUSCA DE DADOS ---
+const fetchData = async () => {
   isLoading.value = true
   try {
-    // 1. Busca TUDO em paralelo
+    const userId = Number(authStore.user?.id)
+
     const [resInst, resRooms, resBookings] = await Promise.all([
       api.get('/instituicoes'),
       api.get('/salas'),
       api.get('/agendamentos')
     ])
 
-    const userId = String(authStore.user?.id)
-
-    // 2. Identifica IDs das MINHAS Instituições
-    const myInstIds = new Set<number>()
+    // Instituições
     if (resInst.data.success) {
-      resInst.data.data.forEach((inst: any) => {
-        if (String(inst.organizador) === userId) {
-          myInstIds.add(inst.id)
-        }
-      })
+      const rawInst = Array.isArray(resInst.data.data) ? resInst.data.data : []
+      myInstitutions.value = rawInst.filter((i: any) => Number(i.organizador) === userId)
     }
 
-    // 3. Identifica IDs das MINHAS Salas (e mapeia nomes)
-    const myRoomIds = new Set<number>()
-    const myRoomsMap = new Map<number, string>()
-    
+    // Salas
     if (resRooms.data.success) {
-      resRooms.data.data.forEach((room: any) => {
-        // Só aceita sala se pertencer a uma instituição minha
-        if (myInstIds.has(room.fk_instituicao_id)) {
-          myRoomIds.add(room.id)
-          myRoomsMap.set(room.id, room.nome)
-        }
-      })
+      const allRooms = Array.isArray(resRooms.data.data) ? resRooms.data.data : []
+      const myInstIds = new Set(myInstitutions.value.map(i => i.id))
+      rooms.value = allRooms.filter((r: any) => myInstIds.has(r.fk_instituicao_id))
     }
 
-    // 4. Filtra Agendamentos
+    // Agendamentos
     if (resBookings.data.success) {
-      const allBookings = resBookings.data.data
-      
-      // Só aceita agendamento se pertencer a uma sala minha
-      const validBookings = allBookings.filter((b: any) => myRoomIds.has(b.fk_salas_id))
-
-      events.value = validBookings.map((item: any) => {
-        let sTime = item.horario_inicio
-        let eTime = item.horario_fim
-        if (!sTime && item.horarios && item.horarios.length > 0) {
-          sTime = item.horarios[0].inicio
-          eTime = item.horarios[0].fim
-        }
-        if (!sTime) sTime = "00:00"
-        if (!eTime) eTime = "01:00"
-
-        const rawDate = item.data_agendamento || item.data
-        const dateISO = typeof rawDate === 'string' ? rawDate.split('T')[0] : ''
-
-        const colors = [
-          'bg-blue-50 border-blue-600 text-blue-700',
-          'bg-rose-50 border-rose-600 text-rose-700',
-          'bg-emerald-50 border-emerald-600 text-emerald-700',
-          'bg-amber-50 border-amber-600 text-amber-700',
-          'bg-purple-50 border-purple-600 text-purple-700'
-        ]
-        const colorClass = colors[(item.fk_salas_id || item.id) % colors.length]
-
-        // Pega nome da sala do mapa seguro
-        const roomName = myRoomsMap.get(item.fk_salas_id) || item.sala?.nome || `Sala ${item.fk_salas_id}`
-
-        return {
-          id: item.id,
-          title: item.proposito || item.assunto || 'Reservado',
-          description: item.descricao,
-          room: roomName,
-          dateISO,
-          dateDisplay: new Date(dateISO + 'T00:00:00').toLocaleDateString('pt-BR'),
-          startTimeRaw: sTime.substring(0, 5),
-          endTimeRaw: eTime.substring(0, 5),
-          timeDisplay: `${sTime.substring(0, 5)} - ${eTime.substring(0, 5)}`,
-          colorClass
-        }
-      })
-      
-      console.log('✅ EVENTOS SEGUROS:', events.value)
+      // LOG PARA DEBUG: Veja no console o que está vindo do banco
+      console.log('📦 Dados recebidos da API:', resBookings.data.data)
+      bookings.value = resBookings.data.data
     }
+
   } catch (error) {
-    console.error('Erro API:', error)
+    console.error('Erro ao carregar agenda:', error)
   } finally {
     isLoading.value = false
   }
 }
 
-const openEventDetails = (event: any) => {
-  selectedEvent.value = event
-  showModal.value = true
+// --- LÓGICA DO GRID ---
+const getBookingForSlot = (roomId: number, hour: number) => {
+  const targetDateStr = currentDate.value.toISOString().split('T')[0]
+
+  const found = bookings.value.find((b: any) => {
+    if (Number(b.fk_salas_id) !== roomId) return false
+    
+    // Tratamento de data (alguns bancos retornam com T00:00:00, outros só a data)
+    const bDate = b.data_agendamento || b.data
+    if (!bDate.toString().startsWith(targetDateStr)) return false
+
+    // Tratamento de horário
+    let bStartHour = 0
+    if (b.horario_inicio) {
+      bStartHour = parseInt(b.horario_inicio.split(':')[0])
+    } else if (b.horarios && b.horarios.length > 0) {
+      bStartHour = parseInt(b.horarios[0].inicio.split(':')[0])
+    }
+
+    return bStartHour === hour
+  })
+
+  if (found) {
+    return {
+      raw: found,
+      // Tenta pegar .proposito (banco) ou .subject (front antigo)
+      title: found.proposito || found.subject || 'Reservado', 
+      userName: getUserName(found)
+    }
+  }
+  
+  return null
+}
+
+// --- ABRIR DETALHES ---
+const openEventDetails = (slotData: any) => {
+  if (!slotData || !slotData.raw) return
+  
+  const booking = slotData.raw
+  
+  // LOG PARA DEBUG DO ITEM CLICADO
+  console.log('🔍 Item clicado:', booking)
+
+  selectedEvent.value = {
+    id: booking.id,
+    title: booking.proposito || 'Sem assunto',
+    // Tenta pegar .descricao, .description ou .observacao
+    description: booking.descricao || booking.description || booking.observacao || 'Nenhuma descrição informada.',
+    user: getUserName(booking),
+    email: getUserEmail(booking),
+    room: rooms.value.find(r => r.id === Number(booking.fk_salas_id))?.nome || 'Sala',
+    time: booking.horario_inicio ? booking.horario_inicio.substring(0,5) : (booking.horarios?.[0]?.inicio || 'Horário indefinido')
+  }
+  showEventModal.value = true
 }
 
 const handleLogout = () => router.push('/login')
-
-onMounted(() => fetchAgendamentos())
+onMounted(() => fetchData())
 </script>
 
 <template>
-  <div class="flex h-screen bg-white">
+  <div class="flex h-screen bg-slate-50">
     <Sidebar :is-open="sidebarOpen" @close="sidebarOpen = false" @logout="handleLogout" />
+
     <div class="flex-1 flex flex-col overflow-hidden">
-      <Header title="Calendário" @toggle-sidebar="sidebarOpen = true" />
-      <main class="flex-1 overflow-y-auto p-4">
-        <div class="max-w-6xl mx-auto h-full flex flex-col bg-white rounded-xl shadow-sm border border-slate-200">
-          <div class="px-6 py-4 flex items-center justify-between border-b border-slate-200 shrink-0 bg-white z-20">
-            <div class="flex items-center gap-4">
-              <h2 class="text-xl font-bold text-slate-900 capitalize">{{ weekLabel }}</h2>
-              <div class="flex items-center rounded-md border border-slate-200 bg-white shadow-sm">
-                <button @click="prevWeek" class="p-2 hover:bg-slate-50 border-r border-slate-200 text-slate-600"><ChevronLeft class="w-4 h-4" /></button>
-                <button @click="goToToday" class="px-4 py-1 text-xs font-bold hover:bg-slate-50 text-slate-700">Hoje</button>
-                <button @click="nextWeek" class="p-2 hover:bg-slate-50 border-l border-slate-200 text-slate-600"><ChevronRight class="w-4 h-4" /></button>
+      <Header title="Agenda de Salas" @toggle-sidebar="sidebarOpen = true" />
+
+      <main class="flex-1 overflow-y-auto p-4 md:p-6">
+        <div class="max-w-[1600px] mx-auto space-y-6">
+          
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 class="text-2xl font-bold text-slate-800 uppercase tracking-tight">AGENDAMENTOS</h1>
+              <p class="text-sm text-slate-500">Gerencie a ocupação das salas por horário</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 rounded-md text-slate-600 text-sm font-medium hover:bg-slate-50">
+                <LayoutGrid class="w-4 h-4" /> Cards
+              </button>
+              <button class="flex items-center gap-2 px-3 py-2 bg-[#be123c] text-white rounded-md text-sm font-medium hover:bg-[#9f1239] shadow-sm">
+                <Filter class="w-4 h-4" /> Filtros
+              </button>
+              <button class="flex items-center gap-2 px-3 py-2 bg-slate-700 text-white rounded-md text-sm font-medium hover:bg-slate-800 shadow-sm">
+                <RotateCcw class="w-4 h-4" /> Reagendar Grade
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+            <div class="flex-1 w-full relative">
+              <input type="text" placeholder="Filtrar por turma..." class="w-full pl-3 pr-10 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-rose-500 transition-colors">
+              <Search class="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
+            </div>
+            <div class="flex-1 w-full relative">
+              <input type="text" placeholder="Filtrar por professor..." class="w-full pl-3 pr-10 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-rose-500 transition-colors">
+              <Search class="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
+            </div>
+            <button class="text-sm text-slate-500 hover:text-red-500 font-medium whitespace-nowrap px-2">
+              × Limpar Filtros
+            </button>
+          </div>
+
+          <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-2 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2 pl-2">
+              <CalendarIcon class="w-5 h-5 text-[#be123c]" />
+              <span class="font-bold text-slate-700">Selecione a Data</span>
+            </div>
+
+            <div class="flex flex-col items-center">
+              <h2 class="text-xl font-bold text-slate-900">{{ formattedDateTitle }}</h2>
+              <p class="text-xs text-slate-400 uppercase tracking-wider font-bold">Grade Diária</p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="flex items-center bg-slate-100 rounded-md p-1">
+                <button @click="prevDay" class="p-1 hover:bg-white hover:shadow-sm rounded transition-all text-slate-600"><ChevronLeft class="w-5 h-5" /></button>
+                <button @click="nextDay" class="p-1 hover:bg-white hover:shadow-sm rounded transition-all text-slate-600"><ChevronRight class="w-5 h-5" /></button>
+              </div>
+              
+              <div class="flex items-center gap-2 border border-slate-300 rounded-md px-3 py-1.5 bg-white">
+                <span class="text-sm font-medium text-slate-600">{{ shortDate }}</span>
+                <CalendarIcon class="w-4 h-4 text-slate-400" />
+              </div>
+
+              <button 
+                @click="goToToday"
+                class="px-4 py-1.5 rounded-md text-sm font-bold transition-colors shadow-sm"
+                :class="isToday ? 'bg-[#be123c] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+              >
+                Hoje
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+            <div class="overflow-x-auto">
+              <div class="min-w-[1200px]">
+                
+                <div class="flex border-b border-slate-200 bg-slate-50">
+                  <div class="w-48 p-4 shrink-0 font-bold text-slate-700 text-sm flex items-center gap-2 border-r border-slate-200">
+                    <LayoutGrid class="w-4 h-4" /> Salas
+                  </div>
+                  <div class="flex-1 grid" :style="`grid-template-columns: repeat(${hours.length}, 1fr)`">
+                    <div v-for="h in hours" :key="h" class="py-3 text-center text-xs font-bold text-slate-500 border-r border-slate-100 last:border-r-0">
+                      <Clock class="w-3 h-3 inline mr-1 mb-0.5" /> {{ String(h).padStart(2, '0') }}:00
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="isLoading" class="p-12 flex justify-center text-[#be123c]">
+                   <Loader2 class="w-10 h-10 animate-spin" />
+                </div>
+                
+                <div v-else-if="rooms.length === 0" class="p-12 text-center text-slate-400 italic">
+                  Nenhuma sala cadastrada.
+                </div>
+
+                <div v-else>
+                  <div v-for="room in rooms" :key="room.id" class="flex border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
+                    
+                    <div class="w-48 p-4 shrink-0 border-r border-slate-200 bg-white group-hover:bg-slate-50/50 transition-colors">
+                      <p class="font-bold text-slate-800 text-sm">{{ room.nome }}</p>
+                      <div class="flex items-center gap-1 text-slate-400 text-xs mt-1">
+                        <Users class="w-3 h-3" />
+                        <span>{{ room.capacity || 30 }} lugares</span>
+                      </div>
+                    </div>
+
+                    <div class="flex-1 grid" :style="`grid-template-columns: repeat(${hours.length}, 1fr)`">
+                      <div 
+                        v-for="h in hours" 
+                        :key="h" 
+                        class="border-r border-slate-100 last:border-r-0 relative h-20 p-1"
+                      >
+                        <div 
+                          v-if="getBookingForSlot(room.id, h)" 
+                          @click="openEventDetails(getBookingForSlot(room.id, h))"
+                          class="h-full w-full bg-rose-100 border-l-4 border-rose-600 rounded-r-md p-2 text-xs flex flex-col justify-center shadow-sm cursor-pointer hover:bg-rose-200 transition-colors group/item"
+                        >
+                          <span class="font-bold text-rose-900 truncate">
+                            {{ getBookingForSlot(room.id, h).title }}
+                          </span>
+                          <span class="text-rose-700 text-[10px] truncate mt-0.5">
+                            {{ getBookingForSlot(room.id, h).userName }}
+                          </span>
+                        </div>
+
+                        <div v-else class="h-full w-full flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer text-slate-300 hover:text-rose-300 transition-colors">
+                          <span class="text-2xl font-light">+</span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
-          <div class="flex-1 overflow-y-auto flex flex-col relative bg-white">
-            <div class="flex border-b border-slate-200 sticky top-0 bg-white z-30 ml-[60px] shadow-sm">
-              <div v-for="day in weekDays" :key="day.dateISO" class="flex-1 py-3 text-center border-l border-slate-100 first:border-l-0">
-                <p class="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1">{{ day.dayName }}</p>
-                <div class="w-8 h-8 mx-auto flex items-center justify-center rounded-full text-sm font-bold transition-colors" :class="day.isToday ? 'bg-rose-600 text-white shadow-md' : 'text-slate-900 hover:bg-slate-100'">{{ day.dayNumber }}</div>
-              </div>
+
+          <div class="bg-white rounded-lg border border-slate-200 p-4 flex items-center gap-6 text-sm">
+             <span class="font-bold text-slate-700">Legenda</span>
+             <div class="flex items-center gap-2">
+               <div class="w-3 h-3 bg-rose-600 rounded-sm"></div>
+               <span class="text-slate-600">Ocupado</span>
+             </div>
+             <div class="flex items-center gap-2">
+               <div class="w-3 h-3 bg-white border border-slate-300 rounded-sm"></div>
+               <span class="text-slate-600">Disponível</span>
+             </div>
+          </div>
+
+        </div>
+      </main>
+
+      <Modal :is-open="showEventModal" title="Detalhes do Agendamento" @close="showEventModal = false">
+        <div v-if="selectedEvent" class="space-y-5">
+          
+          <div class="bg-rose-50 border border-rose-100 rounded-lg p-4 flex items-start gap-4">
+            <div class="bg-white p-2 rounded-full text-rose-600 shadow-sm">
+              <CalendarIcon class="w-6 h-6" />
             </div>
-            <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-white/80 z-40"><Loader2 class="w-10 h-10 animate-spin text-rose-600" /></div>
-            <div class="flex flex-1 relative min-h-[1400px]">
-              <div class="w-[60px] border-r border-slate-200 flex-shrink-0 bg-white sticky left-0 z-20">
-                <div v-for="h in hours" :key="h" class="h-[80px] border-b border-slate-50 text-[10px] text-slate-400 font-medium text-right pr-2 pt-1 relative"><span class="-translate-y-1/2 block">{{ String(h).padStart(2, '0') }}:00</span></div>
-              </div>
-              <div class="flex flex-1 relative">
-                <div class="absolute inset-0 flex flex-col pointer-events-none"><div v-for="h in hours" :key="`grid-${h}`" class="h-[80px] border-b border-slate-100 w-full border-dashed"></div></div>
-                <div v-for="day in weekDays" :key="`col-${day.dateISO}`" class="flex-1 border-l border-slate-100 relative first:border-l-0 group hover:bg-slate-50/30 transition-colors">
-                  <div v-for="event in getEventsForDay(day.dateISO)" :key="event.id" @click.stop="openEventDetails(event)" class="absolute left-1 right-1 rounded-md border-l-[3px] p-2 cursor-pointer hover:brightness-95 hover:scale-[1.02] transition-all shadow-sm overflow-hidden z-10 flex flex-col justify-start" :class="event.colorClass" :style="getEventStyle(event)">
-                    <div class="font-bold text-xs leading-tight mb-0.5">{{ event.title }}</div>
-                    <div class="text-[10px] font-medium opacity-90 flex items-center gap-1"><Clock class="w-3 h-3" /> {{ event.timeDisplay }}</div>
-                    <div class="text-[10px] mt-auto opacity-80 truncate font-medium">{{ event.room }}</div>
-                  </div>
+            <div>
+              <h3 class="font-bold text-lg text-rose-900 leading-tight">{{ selectedEvent.title }}</h3>
+              <p class="text-rose-700 text-sm mt-1">{{ selectedEvent.time }} • {{ selectedEvent.room }}</p>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 flex items-center gap-1">
+                <User class="w-3 h-3" /> Responsável
+              </label>
+              <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-md border border-slate-100">
+                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-600 font-bold border border-slate-200 uppercase">
+                  {{ selectedEvent.user.substring(0,2) }}
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-slate-800">{{ selectedEvent.user }}</p>
+                  <p class="text-xs text-slate-500">{{ selectedEvent.email }}</p>
                 </div>
               </div>
             </div>
+
+            <div>
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 flex items-center gap-1">
+                <Info class="w-3 h-3" /> Descrição / Observações
+              </label>
+              <div class="p-3 bg-slate-50 rounded-md border border-slate-100 text-sm text-slate-700 leading-relaxed min-h-[80px]">
+                {{ selectedEvent.description }}
+              </div>
+            </div>
           </div>
-        </div>
-      </main>
-      <Modal :is-open="showModal" title="Detalhes do Evento" @close="showModal = false">
-        <div v-if="selectedEvent" class="space-y-5">
-          <div class="flex items-center gap-3 p-4 rounded-lg bg-slate-50 border border-slate-100">
-            <div class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-rose-600 border border-rose-100"><CalendarIcon class="w-5 h-5" /></div>
-            <div><h4 class="font-bold text-slate-900 text-lg">{{ selectedEvent.title }}</h4><p class="text-xs text-slate-500 font-medium uppercase tracking-wide">Reserva Confirmada</p></div>
+
+          <div class="flex justify-end pt-2">
+            <button @click="showEventModal = false" class="px-6 py-2 bg-slate-900 text-white rounded-md font-bold text-sm hover:bg-slate-800 transition-colors shadow-sm">
+              Fechar
+            </button>
           </div>
-          <div class="space-y-4 text-sm">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3"><span class="text-slate-500 flex items-center gap-2"><MapPin class="w-4 h-4" /> Sala</span><span class="font-bold text-slate-800 bg-slate-100 px-2 py-1 rounded text-xs">{{ selectedEvent.room }}</span></div>
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3"><span class="text-slate-500 flex items-center gap-2"><Clock class="w-4 h-4" /> Data/Hora</span><span class="font-medium text-slate-800">{{ selectedEvent.dateDisplay }} • {{ selectedEvent.timeDisplay }}</span></div>
-            <div class="pt-1" v-if="selectedEvent.description"><span class="text-slate-500 flex items-center gap-2 text-xs uppercase font-bold mb-2"><AlignLeft class="w-3 h-3" /> Observações</span><p class="text-slate-700 bg-slate-50 p-3 rounded-lg text-xs leading-relaxed border border-slate-100">{{ selectedEvent.description }}</p></div>
-          </div>
-          <button @click="showModal = false" class="w-full py-3 rounded-lg bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors shadow-md">Fechar</button>
         </div>
       </Modal>
+
     </div>
   </div>
 </template>
-<style scoped>.custom-scrollbar::-webkit-scrollbar{width:0}</style>

@@ -2,10 +2,10 @@
 import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  DoorOpen, Plus, Pencil, Trash2, Loader2, Building2, AlertTriangle 
+  DoorOpen, Plus, Pencil, Trash2, Loader2, Building2, 
+  AlertTriangle 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
-import Header from '@/components/layout/Header.vue'
 import Modal from '@/components/ui/Modal.vue'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -20,9 +20,11 @@ const isLoading = ref(true)
 const isSaving = ref(false)
 const isDeleting = ref(false)
 
+// Dados
 const rooms = ref<any[]>([])
 const myInstitutions = ref<any[]>([]) 
 
+// Estados Modais
 const showModal = ref(false)
 const showDeleteModal = ref(false)
 const isEditing = ref(false)
@@ -32,81 +34,71 @@ const formData = reactive({
   id: null as number | null,
   nome: '',
   descricao: '',
-  fk_instituicao_id: '' as string | number
+  fk_instituicao_id: '' as string | number,
 })
 
-// --- BUSCA INICIAL ---
+// --- BUSCA DE DADOS ---
 const fetchData = async () => {
-  // Só carrega se a lista estiver vazia para evitar flash
-  if (rooms.value.length === 0) isLoading.value = true
+  isLoading.value = true
   
   try {
-    const [resRooms, resInst] = await Promise.all([
-      api.get('/salas'),
-      api.get('/instituicoes')
-    ])
+    const userId = authStore.user?.id ? Number(authStore.user.id) : null
+    
+    // 1. Busca Instituições Primeiro
+    try {
+      const { data } = await api.get('/instituicoes')
+      if (data.success) {
+        const rawList = Array.isArray(data.data) ? data.data : []
+        
+        // Se for usuário comum, filtra. Se a API já filtrar, isso é redundante mas seguro.
+        if (userId) {
+           myInstitutions.value = rawList.filter((inst: any) => Number(inst.organizador) === userId)
+        } else {
+           myInstitutions.value = rawList
+        }
+      }
+    } catch (e) { console.error('Erro Inst:', e) }
 
-    const userId = String(authStore.user?.id)
-
-    if (resInst.data.success) {
-      myInstitutions.value = resInst.data.data.filter((inst: any) => {
-        if (!inst.organizador) return false
-        return String(inst.organizador) === userId
-      })
-    }
-
-    if (resRooms.data.success) {
-      const allRooms = resRooms.data.data
-      const myInstIds = new Set(myInstitutions.value.map(i => i.id))
-      rooms.value = allRooms.filter((room: any) => myInstIds.has(room.fk_instituicao_id))
-    }
+    // 2. Busca Salas
+    try {
+      const { data } = await api.get('/salas')
+      if (data.success) {
+        const allRooms = Array.isArray(data.data) ? data.data : []
+        
+        // Filtra para exibir apenas salas das minhas instituições
+        const myInstIds = new Set(myInstitutions.value.map(i => i.id))
+        
+        rooms.value = allRooms.filter((room: any) => myInstIds.has(room.fk_instituicao_id))
+      }
+    } catch (e) { console.error('Erro Salas:', e) }
 
   } catch (error) {
-    console.error('Erro ao carregar:', error)
+    console.error('Erro Geral:', error)
   } finally {
     isLoading.value = false
   }
 }
 
-// --- AÇÕES REATIVAS (SEM RELOAD) ---
-
+// --- CRUD: SALVAR ---
 const handleSave = async () => {
-  if (!formData.fk_instituicao_id) {
-    notification.showError('Selecione uma instituição!')
-    return
-  }
-  
+  if (!formData.fk_instituicao_id) return notification.showError('Selecione uma instituição!')
   isSaving.value = true
+  
   try {
     const payload = {
       nome: formData.nome,
       descricao: formData.descricao,
-      fk_instituicao_id: formData.fk_instituicao_id
+      fk_instituicao_id: formData.fk_instituicao_id,
     }
 
     if (isEditing.value && formData.id) {
-      // EDITAR
       await api.patch(`/sala/${formData.id}`, payload)
-      
-      // Atualiza localmente
-      const index = rooms.value.findIndex(r => r.id === formData.id)
-      if (index !== -1) {
-        rooms.value[index].nome = formData.nome
-        rooms.value[index].descricao = formData.descricao
-        rooms.value[index].fk_instituicao_id = formData.fk_instituicao_id
-      }
-      notification.showSuccess('Sala atualizada com sucesso!')
-
+      await fetchData() 
+      notification.showSuccess('Sala atualizada!')
     } else {
-      // CRIAR
-      const { data } = await api.post('/sala', payload)
-      
-      // Adiciona localmente
-      // Tenta pegar o objeto retornado ou cria um objeto visual com ID gerado (fallback)
-      const newRoom = data.data || { ...payload, id: Date.now() }
-      rooms.value.push(newRoom)
-      
-      notification.showSuccess('Sala criada com sucesso!')
+      await api.post('/sala', payload)
+      await fetchData()
+      notification.showSuccess('Sala criada!')
     }
     showModal.value = false
   } catch (error: any) {
@@ -116,15 +108,13 @@ const handleSave = async () => {
   }
 }
 
+// --- CRUD: EXCLUIR ---
 const executeDelete = async () => {
   if (!itemToDelete.value) return
   isDeleting.value = true
   try {
     await api.delete(`/sala/${itemToDelete.value}`)
-    
-    // Remove localmente
     rooms.value = rooms.value.filter(r => r.id !== itemToDelete.value)
-    
     showDeleteModal.value = false
     notification.showSuccess('Sala removida.')
   } catch (error: any) {
@@ -135,26 +125,35 @@ const executeDelete = async () => {
   }
 }
 
-// --- Auxiliares ---
+// --- UTILS ---
 const openCreateModal = () => {
   isEditing.value = false
   formData.id = null; formData.nome = ''; formData.descricao = ''
-  formData.fk_instituicao_id = myInstitutions.value.length > 0 ? myInstitutions.value[0].id : ''
+  // Pré-seleciona se tiver só uma instituição
+  if (myInstitutions.value.length === 1) {
+    formData.fk_instituicao_id = myInstitutions.value[0].id
+  } else {
+    formData.fk_instituicao_id = ''
+  }
   showModal.value = true
 }
+
 const openEditModal = (room: any) => {
   isEditing.value = true
-  formData.id = room.id; formData.nome = room.nome; formData.descricao = room.descricao; formData.fk_instituicao_id = room.fk_instituicao_id
+  formData.id = room.id
+  formData.nome = room.nome
+  formData.descricao = room.descricao
+  formData.fk_instituicao_id = room.fk_instituicao_id
   showModal.value = true
 }
+
 const confirmDelete = (id: number) => { itemToDelete.value = id; showDeleteModal.value = true }
 const getInstName = (id: number) => { const inst = myInstitutions.value.find(i => i.id === id); return inst ? (inst.nome || inst.name) : '...' }
 const handleLogout = () => router.push('/login')
 
-onMounted(() => {
-  fetchData()
-})
+onMounted(() => fetchData())
 </script>
+
 <template>
   <div class="flex h-screen bg-slate-50">
     <Sidebar :is-open="sidebarOpen" @close="sidebarOpen = false" @logout="handleLogout" />
@@ -167,8 +166,8 @@ onMounted(() => {
           
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h1 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Salas & Laboratórios</h1>
-              <p class="text-slate-500">Cadastre os espaços físicos disponíveis para reserva.</p>
+              <h1 class="text-3xl md:text-2xl font-bold text-slate-900 mb-2">SALAS & LABORATÓRIOS</h1>
+              <p class="text-slate-500">Gerencie os espaços físicos disponíveis para reserva.</p>
             </div>
             <button @click="openCreateModal" class="flex items-center gap-2 bg-[#be123c] hover:bg-[#9f1239] text-white px-4 py-2.5 rounded-md font-bold transition-colors shadow-sm">
               <Plus class="w-5 h-5" /> Nova Sala
@@ -180,11 +179,19 @@ onMounted(() => {
           </div>
 
           <div v-else-if="rooms.length === 0" class="text-center py-12 bg-white rounded-lg border border-dashed border-slate-300">
-             <p class="text-slate-500">Nenhuma sala encontrada nas suas instituições.</p>
+             <DoorOpen class="w-12 h-12 text-slate-300 mx-auto mb-3" />
+             <p class="text-slate-500 font-medium">Nenhuma sala cadastrada.</p>
+             <p v-if="myInstitutions.length === 0" class="text-xs text-red-500 mt-2">
+               Você precisa cadastrar uma Instituição antes de criar salas.
+             </p>
           </div>
 
           <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div v-for="room in rooms" :key="room.id" class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow group flex flex-col">
+            <div 
+              v-for="room in rooms" 
+              :key="room.id" 
+              class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-rose-200 transition-all group flex flex-col relative overflow-hidden"
+            >
               <div class="p-5 border-b border-slate-100 flex justify-between items-start">
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
@@ -194,17 +201,25 @@ onMounted(() => {
                     <h3 class="font-bold text-slate-900 leading-tight">{{ room.nome }}</h3>
                     <div class="flex items-center gap-1 mt-1 text-xs text-slate-500">
                       <Building2 class="w-3 h-3" />
-                      <span>{{ getInstName(room.fk_instituicao_id) }}</span>
+                      <span>{{ getInstName(room.fk_instituicao_id) || 'Inst. Desconhecida' }}</span>
                     </div>
                   </div>
                 </div>
-                <div class="flex gap-1">
-                  <button @click="openEditModal(room)" class="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Pencil class="w-4 h-4" /></button>
-                  <button @click="confirmDelete(room.id)" class="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 class="w-4 h-4" /></button>
-                </div>
               </div>
+
               <div class="p-5 flex-1">
-                <p class="text-sm text-slate-600">{{ room.descricao || 'Sem descrição definida.' }}</p>
+                <p class="text-sm text-slate-600 line-clamp-2">{{ room.descricao || 'Sem descrição definida.' }}</p>
+              </div>
+
+              <div class="px-5 py-3 border-t border-slate-100 rounded-b-lg flex justify-end items-center text-xs bg-slate-50/50">
+                <div class="flex gap-1">
+                  <button @click="openEditModal(room)" class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Editar">
+                    <Pencil class="w-4 h-4" />
+                  </button>
+                  <button @click="confirmDelete(room.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Excluir">
+                    <Trash2 class="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -223,16 +238,16 @@ onMounted(() => {
             <label class="block text-sm font-medium text-slate-700 mb-1">Pertence à Instituição</label>
             <select 
               v-model="formData.fk_instituicao_id" 
+              required
               class="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none bg-white disabled:bg-slate-100"
             >
               <option value="" disabled>Selecione...</option>
               <option v-for="inst in myInstitutions" :key="inst.id" :value="inst.id">
                 {{ inst.nome || inst.name || 'Instituição sem nome' }}
               </option>
-            
             </select>
-            <p v-if="myInstitutions.length === 0" class="text-xs text-red-500 mt-1">
-              Nenhuma instituição encontrada. Cadastre uma primeiro.
+            <p v-if="myInstitutions.length === 0" class="text-xs text-red-500 mt-1 flex items-center gap-1">
+              <AlertTriangle class="w-3 h-3" /> Nenhuma instituição encontrada.
             </p>
           </div>
 
