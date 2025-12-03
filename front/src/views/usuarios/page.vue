@@ -6,6 +6,7 @@ import {
   UserCheck, UserX, Trash2, Loader2, AlertCircle, Ban 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
+import Header from '@/components/layout/Header.vue'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'

@@ -6,6 +6,7 @@ import {
   Calendar as CalendarIcon, Clock, Users, Search, Info, User 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
+import Header from '@/components/layout/Header.vue'
 import Modal from '@/components/ui/Modal.vue'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar, Percent, XCircle, Activity } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
+import Header from '@/components/layout/Header.vue'
 
 const router = useRouter()
 const sidebarOpen = ref(false)

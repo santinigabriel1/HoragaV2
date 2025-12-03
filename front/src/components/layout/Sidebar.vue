@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
-// Adicionei 'Sparkles' aos imports para o ícone de Melhorias Futuras
 import { 
   Home, Calendar, Clock, BarChart3, Building2, 
-  LogOut, X, DoorOpen, Sparkles, Users
+  LogOut, X, DoorOpen, Sparkles, Users 
 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -13,24 +12,24 @@ const props = defineProps<{
 const emit = defineEmits(['close', 'logout'])
 const route = useRoute()
 
-// Verifica se a rota atual começa com o path do link
+// Verifica se a rota atual está ativa
 const isActive = (path: string) => route.path.startsWith(path)
 
-// Nova ordem e novos nomes conforme solicitado
+// Ordem atualizada dos menus
 const menuItems = [
-  { label: 'Início', icon: Home, path: '/agendamento' },
-  { label: 'Agenda', icon: Calendar, path: '/calendario' },        
+  { label: 'Agendamento', icon: Home, path: '/agendamento' },
+  { label: 'Agenda', icon: Calendar, path: '/calendario' },
   { label: 'Disponibilidade', icon: Clock, path: '/disponibilidade' },
   { label: 'Salas', icon: DoorOpen, path: '/salas' },
   { label: 'Usuários', icon: Users, path: '/usuarios' },
   { label: 'Instituições', icon: Building2, path: '/instituicoes' },
-  { label: 'Dashboard', icon: BarChart3, path: '/estatisticas' },  
-  { label: 'Melhorias Futuras', icon: Sparkles, path: '/melhorias' }, 
+  { label: 'Dashboard', icon: BarChart3, path: '/estatisticas' },
+  { label: 'Melhorias Futuras', icon: Sparkles, path: '/melhorias' },
 ]
 </script>
 
 <template>
-  <aside class="hidden md:flex md:w-64 flex-col bg-white border-r border-slate-200 h-full">
+  <aside class="hidden md:flex md:w-64 flex-col bg-white border-r border-slate-200 h-full transition-all">
     <div class="p-6 border-b border-slate-100">
       <h1 class="text-2xl font-bold text-rose-800 tracking-tight">HORAGA</h1>
     </div>
@@ -59,15 +58,21 @@ const menuItems = [
     </div>
   </aside>
 
-  <div v-if="isOpen" class="fixed inset-0 z-40 bg-black/50 md:hidden" @click="$emit('close')"></div>
+  <div 
+    v-if="isOpen" 
+    class="fixed inset-0 z-40 bg-black/50 md:hidden backdrop-blur-sm" 
+    @click="$emit('close')"
+  ></div>
   
   <aside 
     v-if="isOpen" 
-    class="fixed left-0 top-0 z-50 h-full w-64 bg-white shadow-2xl flex flex-col md:hidden transition-transform"
+    class="fixed left-0 top-0 z-50 h-full w-64 bg-white shadow-2xl flex flex-col md:hidden transition-transform animate-slide-in"
   >
     <div class="p-6 border-b border-slate-100 flex justify-between items-center">
       <h1 class="text-2xl font-bold text-rose-800">HORAGA</h1>
-      <button @click="$emit('close')" class="text-slate-500"><X class="w-6 h-6" /></button>
+      <button @click="$emit('close')" class="text-slate-500 hover:text-rose-600 p-1">
+        <X class="w-6 h-6" />
+      </button>
     </div>
 
     <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -95,3 +100,14 @@ const menuItems = [
     </div>
   </aside>
 </template>
+
+<style scoped>
+/* Animação suave para entrada do menu mobile */
+@keyframes slideIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+}
+</style>

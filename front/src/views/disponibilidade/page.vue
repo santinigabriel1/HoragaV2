@@ -5,6 +5,7 @@ import {
   Clock, Calendar, Save, Plus, Trash2, AlertCircle, Copy, ClipboardPaste, Check 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
+import Header from '@/components/layout/Header.vue'
 import api from '@/services/api'
 import { useNotificationStore } from '@/stores/notification' 
 import { useAuthStore } from '@/stores/auth'
