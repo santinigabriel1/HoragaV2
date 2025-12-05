@@ -131,7 +131,7 @@ const handleLogout = () => router.push('/login')
         <div class="max-w-6xl mx-auto">
           
           <div class="mb-8">
-            <h1 class="text-3xl font-bold text-slate-900 mb-2">Usuários</h1>
+            <h1 class="text-2xl font-bold text-slate-900 mb-2">USUÁRIOS</h1>
             <p class="text-slate-500">Gerencie quem tem acesso à sua instituição.</p>
           </div>
 

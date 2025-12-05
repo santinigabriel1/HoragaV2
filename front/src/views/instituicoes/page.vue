@@ -148,7 +148,7 @@ onMounted(() => fetchInstitutions())
           
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h1 class="text-3xl font-bold text-slate-900 mb-2">Instituições</h1>
+              <h1 class="text-2xl font-bold text-slate-900 mb-2">INSTITUIÇÕES</h1>
               <p class="text-slate-500">Gerencie suas unidades.</p>
             </div>
             <button @click="openCreateModal" class="flex items-center gap-2 bg-[#be123c] hover:bg-[#9f1239] text-white px-4 py-2.5 rounded-md font-bold transition-colors shadow-sm">

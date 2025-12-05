@@ -2,8 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  Lightbulb, FileText, Shield, BarChart3, FolderArchive, Languages, 
-  Clock 
+  Lightbulb, Lock, Shield, BarChart3, Languages, Clock 
 } from 'lucide-vue-next'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
@@ -16,11 +15,11 @@ const handleLogout = () => router.push('/login')
 const features = [
   {
     id: 1,
-    title: 'Gerar histórico/relatório de alunos em PDF',
-    description: 'Funcionalidade para exportar o histórico completo e relatórios detalhados dos alunos em formato PDF, facilitando o compartilhamento e arquivamento de informações acadêmicas.',
+    title: 'Níveis de Segurança',
+    description: 'Implementação de melhorias robustas na segurança da informação, incluindo criptografia de dados sensíveis, proteção contra ataques comuns e logs de auditoria detalhados.',
     priority: 'Alta',
     status: 'Planejado',
-    icon: FileText
+    icon: Lock // Ícone de cadeado para segurança
   },
   {
     id: 2,
@@ -40,27 +39,19 @@ const features = [
   },
   {
     id: 4,
-    title: 'Arquivamento de registros de avaliações',
-    description: 'Sistema para armazenar e gerenciar arquivos físicos das avaliações dos alunos, incluindo provas no papel e áudios de provas de listening.',
-    priority: 'Média',
-    status: 'Planejado',
-    icon: FolderArchive
-  },
-  {
-    id: 5,
     title: 'Internacionalização',
-    description: 'Internacionalização do sistema para dar suporte a inúmeros idiomas.',
+    description: 'Internacionalização do sistema para dar suporte a inúmeros idiomas, permitindo expansão para outras regiões.',
     priority: 'Baixa',
     status: 'Planejado',
     icon: Languages
   }
 ]
 
-// Cores das prioridades (Mantidas para semântica, mas ajustadas para harmonizar)
+// Cores das prioridades
 const getPriorityColor = (priority: string) => {
   switch (priority) {
     case 'Alta': return 'bg-rose-100 text-rose-700 border-rose-200'
-    case 'Média': return 'bg-amber-50 text-amber-700 border-amber-200' // Amber combina bem com o Rose
+    case 'Média': return 'bg-amber-50 text-amber-700 border-amber-200'
     case 'Baixa': return 'bg-slate-100 text-slate-600 border-slate-200'
     default: return 'bg-slate-100 text-slate-600'
   }
@@ -78,7 +69,7 @@ const getPriorityColor = (priority: string) => {
         <div class="max-w-7xl mx-auto">
           
           <div class="mb-8">
-            <h1 class="text-3xl md:text-2xl font-bold text-slate-900 mb-2">FEATURES FUTURAS</h1>
+            <h1 class="text-2xl font-bold text-slate-900 mb-2">FEATURES FUTURAS</h1>
             <p class="text-slate-500">Melhorias e funcionalidades planejadas para o sistema.</p>
           </div>
 
